@@ -15,6 +15,8 @@ class AdjeminPay extends StatefulWidget {
   final String designation;
   final String payerName;
 
+  final String locale;
+
   final Function callback;
 
   AdjeminPay({
@@ -26,6 +28,7 @@ class AdjeminPay extends StatefulWidget {
     this.currency,
     @required this.designation,
     this.payerName,
+    this.locale = 'fr_FR',
     this.callback,
   });
 
@@ -77,6 +80,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   String _phoneErrorText = '';
   String _otpErrorText = '';
 
+  final _clientNameFocusNode = FocusNode();
   final _clientPhoneFocusNode = FocusNode();
   final _clientOrangeOtpFocusNode = FocusNode();
 
@@ -120,14 +124,18 @@ class _AdjeminPayState extends State<AdjeminPay>
     //   _paymentState = AdpPaymentState.started;
     // });
     // ** Form validation
-    String _clientPhone = _clientPhoneController.text.trim();
-    if (_clientPhone.isEmpty) {
-      return;
+    if (widget.payerName == null) {
+      if (!_validateName(_clientNameController.text)) return;
     }
-    if (_clientPhone.length != 8) {
-      return;
+    if (!_validatePhone(_clientPhoneController.text)) return;
+    //
+    if (_selectedOperator == AdpPaymentOperator.orange) {
+      if (!_validateOrangeOtp(_clientOrangeOtpController.text)) return;
     }
-    // platform specific validation
+    
+    setState(() {
+      _paymentState = AdpPaymentState.started;
+    });
 
     _transactionId =
         widget.transactionId ?? "Adjemin" + DateTime.now().toString();
@@ -157,7 +165,7 @@ class _AdjeminPayState extends State<AdjeminPay>
       'operator': paymentOperatorText(_selectedOperator),
 
       'name': widget.payerName ?? _clientNameController.text,
-      'phone_number': _clientPhone,
+      'phone_number': _clientPhoneController.text,
       'otp': _clientOrangeOtpController.text,
       // 'card_name': paymentData['card_name'],
       // 'card_number': paymentData['card_number'],
@@ -170,9 +178,9 @@ class _AdjeminPayState extends State<AdjeminPay>
     print(">>>>body data");
     print(body);
 
-    setState(() {
-      _paymentState = AdpPaymentState.initiated;
-    });
+    // setState(() {
+    //   _paymentState = AdpPaymentState.initiated;
+    // });
 
     var url = "https://api.adjeminpay.net/v1/auth/makeFlutterPayment";
 
@@ -418,7 +426,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(
-        milliseconds: 300,
+        milliseconds: 200,
       ),
     );
     _slideAnimation = Tween<Offset>(
@@ -447,16 +455,20 @@ class _AdjeminPayState extends State<AdjeminPay>
   @override
   void dispose() {
     super.dispose();
+    //
     _clientNameController.dispose();
     _clientPhoneController.dispose();
     _clientOrangeOtpController.dispose();
+    //
+    _clientNameFocusNode.dispose();
     _clientPhoneFocusNode.dispose();
     _clientOrangeOtpFocusNode.dispose();
+    //
     _animationController.dispose();
   }
 
   void loadPage() async {
-    print(">>> config");
+    print(">>> Adjeminpay Init");
     print(widget.apiKey);
     print(widget.applicationId);
 
@@ -584,7 +596,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     await precacheImage(imageFailed.image, context);
     _iz();
 
-    await Future.delayed(Duration(milliseconds: 300))
+    await Future.delayed(Duration(milliseconds: 100))
         .then((value) => setState(() {
               _isPageLoading = false;
             }));
@@ -812,6 +824,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                 // *** Name INPUT
                 widget.payerName == null
                     ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
@@ -825,10 +838,24 @@ class _AdjeminPayState extends State<AdjeminPay>
                               ),
                             ],
                           ),
+                          AnimatedContainer(
+                            duration: Duration(milliseconds: 200),
+                            height: _nameErrorText.isEmpty ? 0 : 20,
+                            margin: EdgeInsets.only(
+                              left: 5,
+                              bottom: 5,
+                            ),
+                            child: Text(
+                              "$_nameErrorText",
+                              style: AdpTextStyles.error,
+                            ),
+                          ),
                           Container(
                             decoration: BoxDecoration(
                               border: Border.all(
-                                color: AdpColors.primary,
+                                color: _nameErrorText.isEmpty
+                                    ? AdpColors.primary
+                                    : AdpColors.red,
                                 width: 1.3,
                               ),
                               borderRadius: BorderRadius.circular(10),
@@ -836,16 +863,27 @@ class _AdjeminPayState extends State<AdjeminPay>
                             padding: EdgeInsets.only(left: 10),
                             child: TextField(
                               controller: _clientNameController,
+                              focusNode: _clientNameFocusNode,
+                              
                               keyboardType: TextInputType.name,
-                              style: AdpTextStyles.primary_bold,
-                              onSubmitted: (_) {
-                                FocusScope.of(context)
-                                    .requestFocus(_clientPhoneFocusNode);
+                              onChanged: (_) {
+                                setState(() {
+                                  _nameErrorText = '';
+                                });
                               },
+                              onSubmitted: _validateName,
+                              style: _nameErrorText.isEmpty
+                                  ? AdpTextStyles.primary_bold
+                                  : AdpTextStyles.error,
+                              cursorColor: _nameErrorText.isEmpty
+                                  ? AdpColors.primary
+                                  : AdpColors.red,
                               decoration: InputDecoration(
                                 contentPadding: EdgeInsets.all(0),
                                 hintText: "Nom et prénom",
-                                hintStyle: AdpTextStyles.primary_bold,
+                                hintStyle: _nameErrorText.isEmpty
+                                    ? AdpTextStyles.primary_bold
+                                    : AdpTextStyles.error,
                                 border: InputBorder.none,
                               ),
                             ),
@@ -991,8 +1029,8 @@ class _AdjeminPayState extends State<AdjeminPay>
                   opacity: _opacityAnimation,
                   child: SlideTransition(
                     position: _slideAnimation,
-                    child: Container(
-                      // duration: Duration(milliseconds: 200),
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 200),
                       // curve: Curves.easeInSine,
                       height: _getOrangeOtpHeight(),
                       // _selectedOperator == AdpPaymentOperator.orange ? 90 : 0,
@@ -1123,25 +1161,31 @@ class _AdjeminPayState extends State<AdjeminPay>
                           ),
                     onPressed: _paymentState != AdpPaymentState.empty
                         ? null
-                        : () {
-                            print(">>>>>> payer");
-                            print("<<< ${_clientPhoneController.text}");
-                            // TODO pay
-                            // if()
-                            if (_selectedOperator ==
-                                AdpPaymentOperator.orange) {
-                              if (_validatePhone(_clientPhoneController.text)) {
-                                if (_validateOrangeOtp(
-                                    _clientOrangeOtpController.text)) {
-                                  _makePayment();
-                                }
-                              }
-                            } else {
-                              if (_validatePhone(_clientPhoneController.text)) {
-                                _makePayment();
-                              }
-                            }
-                          }),
+                        :
+                        // () {
+                        // print(">>>>>> payer");
+                        // print("<<< ${_clientPhoneController.text}");
+                        _makePayment
+                    // if (widget.payerName == null) {
+                    //   if (_validateName(_clientNameController.text)) {
+
+                    //   }
+                    // }
+                    // if (_selectedOperator ==
+                    //     AdpPaymentOperator.orange) {
+                    //   if (_validatePhone(_clientPhoneController.text)) {
+                    //     if (_validateOrangeOtp(
+                    //         _clientOrangeOtpController.text)) {
+                    //       _makePayment();
+                    //     }
+                    //   }
+                    // } else {
+                    //   if (_validatePhone(_clientPhoneController.text)) {
+                    //     _makePayment();
+                    //   }
+                    // }
+                    // }
+                    ),
               ),
             ),
             // ****** Cancel button
@@ -1455,7 +1499,46 @@ class _AdjeminPayState extends State<AdjeminPay>
       ),
     );
   }
+
   // ******* HELPERS
+  // *** Input Validation
+  bool _validateName(String clientName) {
+    // bool _isPhoneValid = true;
+
+    clientName = clientName.trimLeft();
+    clientName = clientName.trimRight();
+
+    FocusScope.of(context).requestFocus(_clientNameFocusNode);
+    if (clientName.isEmpty) {
+      setState(() {
+        _nameErrorText = "Veuillez entrer votre nom et prénoms";
+      });
+      return false;
+    }
+
+    RegExp illegalCharacters = RegExp(r"\d|\W");
+
+    // if (illegalCharacters.hasMatch(clientName)) {
+    if (clientName.contains(illegalCharacters)) {
+      setState(() {
+        _nameErrorText = "Nom et prénoms invalide";
+      });
+      return false;
+    }
+
+    if (clientName.length < 3) {
+      setState(() {
+        _nameErrorText = "Nom et prénoms trop court";
+      });
+      return false;
+    }
+
+    _clientNameController.text = clientName;
+
+    FocusScope.of(context).requestFocus(_clientPhoneFocusNode);
+    // _validateOrangeOtp(_clientOrangeOtpController.text);
+    return true;
+  }
 
   bool _validatePhone(String clientPhone) {
     // bool _isPhoneValid = true;
@@ -1484,7 +1567,6 @@ class _AdjeminPayState extends State<AdjeminPay>
     if (clientPhone.length != 8) {
       setState(() {
         _phoneErrorText = "Le téléphone doit être de 8 charactères";
-        print("8 ch");
       });
       return false;
     }
@@ -1534,7 +1616,7 @@ class _AdjeminPayState extends State<AdjeminPay>
       return true;
     } else {
       FocusScope.of(context).unfocus();
-      _makePayment();
+      // _makePayment();
       return true;
     }
   }
@@ -1565,7 +1647,7 @@ class _AdjeminPayState extends State<AdjeminPay>
 
     if (_validatePhone(_clientPhoneController.text)) {
       FocusScope.of(context).unfocus();
-      _makePayment();
+      // _makePayment();
       return true;
     }
     return false;
@@ -1598,7 +1680,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     }
     print(">>>>>>>>>>>> Notifying Merchant Backend");
 
-    http
+  var response = await http
         .post(
       widget.notifyUrl,
       headers: {
@@ -1611,16 +1693,58 @@ class _AdjeminPayState extends State<AdjeminPay>
         'status': paymentResult['status'],
         'message': paymentResult['message'],
       }),
-    )
-        .then((response) {
-      print("<<<<< Notified Merchant Backend");
-      print(json.decode(response.body));
-    });
+    );
+    if(response.statusCode != 200){
+      print("<<<<<< Merchant notification Error");
+      return;
+    }
+    print("<<<<< Notified Merchant Backend");
+    print(json.decode(response.body));
+    
 
     if (widget.callback != null) {
       print(">>>>>>>>>>>> Executing callback Backend");
       widget.callback(_paymentResult);
     }
+  }
+
+  // **** Localisation & language helpers
+  String __(String title, [String locale = 'fr_FR']) {
+    Map<String, String> fr = {
+      'total_to_pay': "Total à payer",
+      'select_method': "Sélectionnez un moyen de paiement",
+      'mobile_money': "Mobile Money",
+      'bank_card': "Carte Banquaire",
+      'name': "Nom et prénoms",
+      'momo_account': "Compte Mobile Money",
+      // error texts
+      'input_empty_name': "",
+      'input_invalid_name': "",
+      //
+      'input_required_phone': "",
+      'input_length_phone': "",
+      'input_invalid_phone': "",
+      'input_invalid_mtn_phone': "",
+      'input_invalid_orange_phone': "",
+      'input_invalid_moov_phone': "",
+      //
+      'input_required_otp': "",
+      'input_length_otp': "",
+      'input_invalid_otp': "",
+      //
+      'info_text_mtn': "",
+      'info_text_orange': "",
+      'info_text_moov': "",
+      //
+      'pay_btn': "Payer",
+      'cancel_btn': "Annuler",
+      'terminate_btn': "Terminer",
+    };
+    Map<String, String> en = {'': ''};
+    if (locale == 'en_EN') {
+      return en[title];
+    }
+    return fr[title];
   }
 }
 
@@ -1753,7 +1877,7 @@ class ALoader extends StatelessWidget {
             //
             SizedBox(height: textSpacing ?? 5),
             AnimatedContainer(
-              duration: Duration(milliseconds: 100),
+              duration: Duration(milliseconds: 200),
               padding: textPadding ?? EdgeInsets.all(0),
               child: Text(text ?? "",
                   textAlign: isTextCentered ? TextAlign.center : TextAlign.left,
@@ -1824,11 +1948,11 @@ class AdpInfoText {
   static const mtn =
       '''Veuillez taper *133# choisir l'option 1 puis l'option 1 pour approuver ou refuser le paiement''';
   static const moov =
-      '''Pour obtenir votre code d'autorisation Moov Money, merci de taper <b>#144#</b>, choisir l'obtion
-      <b>8</b> puis l'option <b>2</b>. Entrez votre code secret et validez.''';
+      '''Pour obtenir votre code d'autorisation Moov Money, merci de taper #155#, choisir l'option
+      8 puis l'option 2. Entrez votre code secret et validez.''';
   // TODO make this rich text
   static const orange =
-      '''Pour obtenir votre code d'autorisation Orange Money, merci de taper #144#, choisir l'obtion 8 puis l'option <b>2</b>. Entrez votre code secret et validez.''';
+      '''Pour obtenir votre code d'autorisation Orange Money, merci de taper #144#, choisir l'option 8 puis l'option 2. Entrez votre code secret et validez.''';
 }
 
 // ****** OPERATORS INFOS
