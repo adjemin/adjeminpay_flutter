@@ -43,7 +43,7 @@ class AdjeminPay extends StatefulWidget {
 class _AdjeminPayState extends State<AdjeminPay>
     with SingleTickerProviderStateMixin {
   // dynamic
-  final String merchantIconUrl = "https://adjemin.com/img/logo.png";
+  // final String merchantIconUrl = "https://adjemin.com/img/logo.png";
   final String adpIconUrl = "https://api.adjeminpay.net/img/logo.png";
 
   // *** Network assets
@@ -578,10 +578,11 @@ class _AdjeminPayState extends State<AdjeminPay>
 
     _iz();
 
-    imageMerchantlogo = decodedData['application_logo'];
+    // imageMerchantlogo = decodedData['application_logo'];
+    String _imageMerchantlogo = decodedData['application_logo'];
 
     // **** Setup and Preload images
-    imageMerchantlogo = Image.network(imageMerchantlogo);
+    imageMerchantlogo = Image.network(_imageMerchantlogo);
     imageBackground = Image.network(AdpAsset.background);
     imageMobileMoney = Image.network(AdpAsset.mobile_money);
     imageMtn = Image.network(AdpAsset.mtn);
@@ -762,12 +763,15 @@ class _AdjeminPayState extends State<AdjeminPay>
             maxHeight: 80,
             maxWidth: 100,
           ),
-          child: Image.network(
-            // child: Image.asset(
-            // ******* MERCHANT IMAGE // ADJEMIN
-            merchantIconUrl,
-            fit: BoxFit.contain,
-          ),
+          child: 
+          imageMerchantlogo,
+          // Image.network(
+          //   // child: Image.asset(
+          //   // ******* MERCHANT IMAGE // ADJEMIN
+          //   // merchantIconUrl,
+          //   imageMerchantlogo,
+          //   fit: BoxFit.contain,
+          // ),
         ),
         // AdjeminPay Icon
         ConstrainedBox(
