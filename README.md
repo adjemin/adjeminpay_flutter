@@ -58,7 +58,7 @@ Build a cart screen to finalize the payment.
 You can find a beautiful cart screen example from [Academind][] by Maximilian Schwarzmüller in the [Example][] file.
 
 [Academind]: https://academind.com/
-[Example]: [https://](https://github.com/adjemin/adjeminpay_flutter/tree/master/example)
+[Example]: https://https://github.com/adjemin/adjeminpay_flutter/tree/master/example
 
 ### Step 4. Have your order/transaction data ready
 

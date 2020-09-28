@@ -1728,43 +1728,43 @@ class _AdjeminPayState extends State<AdjeminPay>
   }
 
   // **** Localisation & language helpers
-  String __(String title, [String locale = 'fr_FR']) {
-    Map<String, String> fr = {
-      'total_to_pay': "Total à payer",
-      'select_method': "Sélectionnez un moyen de paiement",
-      'mobile_money': "Mobile Money",
-      'bank_card': "Carte Banquaire",
-      'name': "Nom et prénoms",
-      'momo_account': "Compte Mobile Money",
-      // error texts
-      'input_empty_name': "",
-      'input_invalid_name': "",
-      //
-      'input_required_phone': "",
-      'input_length_phone': "",
-      'input_invalid_phone': "",
-      'input_invalid_mtn_phone': "",
-      'input_invalid_orange_phone': "",
-      'input_invalid_moov_phone': "",
-      //
-      'input_required_otp': "",
-      'input_length_otp': "",
-      'input_invalid_otp': "",
-      // 
-      'info_text_mtn': "",
-      'info_text_orange': "",
-      'info_text_moov': "",
-      //
-      'pay_btn': "Payer",
-      'cancel_btn': "Annuler",
-      'terminate_btn': "Terminer",
-    };
-    Map<String, String> en = {'': ''};
-    if (locale == 'en_EN') {
-      return en[title];
-    }
-    return fr[title];
-  }
+  // String __(String title, [String locale = 'fr_FR']) {
+  //   Map<String, String> fr = {
+  //     'total_to_pay': "Total à payer",
+  //     'select_method': "Sélectionnez un moyen de paiement",
+  //     'mobile_money': "Mobile Money",
+  //     'bank_card': "Carte Banquaire",
+  //     'name': "Nom et prénoms",
+  //     'momo_account': "Compte Mobile Money",
+  //     // error texts
+  //     'input_empty_name': "",
+  //     'input_invalid_name': "",
+  //     //
+  //     'input_required_phone': "",
+  //     'input_length_phone': "",
+  //     'input_invalid_phone': "",
+  //     'input_invalid_mtn_phone': "",
+  //     'input_invalid_orange_phone': "",
+  //     'input_invalid_moov_phone': "",
+  //     //
+  //     'input_required_otp': "",
+  //     'input_length_otp': "",
+  //     'input_invalid_otp': "",
+  //     // 
+  //     'info_text_mtn': "",
+  //     'info_text_orange': "",
+  //     'info_text_moov': "",
+  //     //
+  //     'pay_btn': "Payer",
+  //     'cancel_btn': "Annuler",
+  //     'terminate_btn': "Terminer",
+  //   };
+  //   Map<String, String> en = {'': ''};
+  //   if (locale == 'en_EN') {
+  //     return en[title];
+  //   }
+  //   return fr[title];
+  // }
 }
 
 //********** DOCUMENTATION */
