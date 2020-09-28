@@ -68,7 +68,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   var _selectedMethod = AdpPaymentMethod.mobile;
   var _selectedOperator = AdpPaymentOperator.mtn;
 
-  String _transactionId;
+  // String _transactionId;
 
   TextEditingController _clientNameController = TextEditingController();
   TextEditingController _clientPhoneController = TextEditingController();
@@ -143,8 +143,8 @@ class _AdjeminPayState extends State<AdjeminPay>
     print("=== ADP $_paymentState");
     print("validated !");
 
-    _transactionId =
-        widget.transactionId ?? "Adjemin" + DateTime.now().toString();
+    // _transactionId =
+    //     widget.transactionId ?? "Adjemin" + DateTime.now().toString();
 
     String _designation = widget.designation.length > 191
         ? widget.designation.substring(0, 191)
@@ -162,7 +162,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     var body = {
       'adp_apikey': widget.apiKey,
       'adp_application_id': widget.applicationId,
-      'adp_transaction_id': _transactionId,
+      'adp_transaction_id': widget.transactionId,
       'adp_designation': _designation,
       'adp_amount': widget.amount,
       'adp_currency': "XOF",
@@ -1683,7 +1683,7 @@ class _AdjeminPayState extends State<AdjeminPay>
         'Accept': "application/json"
       },
       body: json.encode({
-        'transaction_id': _transactionId,
+        'transaction_id': widget.transactionId,
         'code': paymentResult['code'],
         'status': paymentResult['status'],
         'message': paymentResult['message'],
@@ -1693,7 +1693,7 @@ class _AdjeminPayState extends State<AdjeminPay>
       print("<<<<<< Merchant notification Error");
       print(response.body);
       print("<<=");
-      print(_transactionId);
+      print(widget.transactionId);
       // print(response);
       if (response.statusCode >= 500) {
         return {
