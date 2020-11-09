@@ -10,9 +10,9 @@ Follow the steps below :
 
 ### Step 1. Get and store your credentials in a constants files
 
-Sign up and create a merchant application for free at [AdjeminPay_signup][] to get an apiKey and an applicationId.
+Sign up and create a merchant application for free at [AdjeminPay][] to get an apiKey and an applicationId.
 
-[AdjeminPay_signup]: https://merchant.adjeminpay.net
+[AdjeminPay]: https://merchant.adjeminpay.net
 
 Then store them in a config/constants/env file where you keep all your other constant data.
 

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:adjemin/ui/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -118,6 +119,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     'message': '',
   };
 
+  bool _isShowingDialog = false;
   // bool _isLoading = false;
   // bool _isPaymentPending = false;
   // bool _isPaymentSuccessful = false;
@@ -181,8 +183,7 @@ class _AdjeminPayState extends State<AdjeminPay>
       // 'crypted_transaction_id': paymentData['transaction_token']
     };
     // Get token
-    print(">>>>body data");
-    print(body);
+
 
     setState(() {
       _paymentState = AdpPaymentState.initiated;
@@ -282,7 +283,8 @@ class _AdjeminPayState extends State<AdjeminPay>
                     };
                     print("===> going notify success");
                     setState(() {});
-                    _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+                    _paymentResult['notification'] =
+                        await _notifyMerchant(_paymentResult);
                     print("<=== finished notify success");
                   }
                   if (finalResponseData['status'] == "CANCELLED") {
@@ -299,7 +301,8 @@ class _AdjeminPayState extends State<AdjeminPay>
                       };
                       print("===> going notify expired");
                       setState(() {});
-                      _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+                      _paymentResult['notification'] =
+                          await _notifyMerchant(_paymentResult);
                       print("<=== finished notify expired");
                     } else {
                       print("<<< Payment refused");
@@ -312,7 +315,8 @@ class _AdjeminPayState extends State<AdjeminPay>
                       };
                       print("===> going notify refused");
                       setState(() {});
-                      _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+                      _paymentResult['notification'] =
+                          await _notifyMerchant(_paymentResult);
                       print("<=== finished notify refused");
                     }
                   }
@@ -326,7 +330,8 @@ class _AdjeminPayState extends State<AdjeminPay>
                     };
                     print("===> going notify failed");
                     setState(() {});
-                    _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+                    _paymentResult['notification'] =
+                        await _notifyMerchant(_paymentResult);
                     print("<=== finished notify failed");
                   }
                   // **** Sending notification to ?notifyUrl
@@ -355,7 +360,8 @@ class _AdjeminPayState extends State<AdjeminPay>
                       _paymentState = AdpPaymentState.errorHttp;
                     });
                     break finalResponseLoop;
-                    _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+                    _paymentResult['notification'] =
+                        await _notifyMerchant(_paymentResult);
                     return;
                   }
                   print("====== Retrying ");
@@ -372,7 +378,8 @@ class _AdjeminPayState extends State<AdjeminPay>
                 _paymentResult = response;
               });
               // **** Sending notification to ?notifyUrl
-              _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+              _paymentResult['notification'] =
+                  await _notifyMerchant(_paymentResult);
               return;
             }
             break;
@@ -648,7 +655,8 @@ class _AdjeminPayState extends State<AdjeminPay>
   Widget build(BuildContext context) {
     // buildT
     // setState(() {
-    //   _paymentState = AdpPaymentState.expired;
+      // _paymentState = AdpPaymentState.expired;
+    //   _paymentState = AdpPaymentState.waiting;
     // });
     // _paymentResult = {
     //   'code': 00,
@@ -763,8 +771,7 @@ class _AdjeminPayState extends State<AdjeminPay>
             maxHeight: 80,
             maxWidth: 100,
           ),
-          child: 
-          imageMerchantlogo,
+          child: imageMerchantlogo,
           // Image.network(
           //   // child: Image.asset(
           //   // ******* MERCHANT IMAGE // ADJEMIN
@@ -1183,22 +1190,13 @@ class _AdjeminPayState extends State<AdjeminPay>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: FlatButton(
-                          padding: EdgeInsets.symmetric(vertical: 10),
-                          child: Text(
-                            "Annuler",
-                            style: AdpTextStyles.error_semi_bold,
-                          ),
-                          onPressed: () async {
-                            // TODO pay
-                            _paymentResult = {
-                              'code': 405,
-                              'status': "CANCELLED",
-                              'message': "Paiement annulé"
-                            };
-                           _paymentResult['notification'] =  await _notifyMerchant(_paymentResult);
-
-                            Navigator.of(context).pop(_paymentResult);
-                          }),
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Text(
+                          "Annuler",
+                          style: AdpTextStyles.error_semi_bold,
+                        ),
+                        onPressed: _showAbortDialog,
+                      ),
                     ),
                   )
                 : Container(),
@@ -1333,39 +1331,126 @@ class _AdjeminPayState extends State<AdjeminPay>
   // Payment result Builder
   // ******************* PAGE BUILDER
   buildPage() {
-    if (_paymentState == AdpPaymentState.empty ||
-        _paymentState == AdpPaymentState.initiated) {
-      return buildAdjeminPayForm();
-    } else if (_paymentState == AdpPaymentState.pending ||
-        _paymentState == AdpPaymentState.waiting) {
-      return buildPendingPaymentView();
+    // Abort dialog
+    if (_isShowingDialog) {
+      return buildShowDialog();
     } else {
-      return buildPaymentResultView();
+      if (_paymentState == AdpPaymentState.empty ||
+          _paymentState == AdpPaymentState.initiated) {
+        return buildAdjeminPayForm();
+      } else if (_paymentState == AdpPaymentState.pending ||
+          _paymentState == AdpPaymentState.waiting) {
+        return buildPendingPaymentView();
+      } else {
+        return buildPaymentResultView();
+      }
     }
   }
 
   Widget buildPendingPaymentView() {
-    return Center(
-      child: Container(
-        height: 400,
-        padding: EdgeInsets.all(20),
-        child: ALoader(
-          backgroundImage: NetworkImage(
-            // backgroundImage: AssetImage(
-            _selectedOperator == AdpPaymentOperator.orange
-                ? AdpAsset.orange
-                : _selectedOperator == AdpPaymentOperator.moov
-                    ? AdpAsset.moov
-                    : AdpAsset.mtn,
+    return Stack(
+      children: [
+        Positioned(
+          right: 10,
+          top: 10,
+          child: Container(
+            padding: EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AdpColors.primary100,
+            ),
+            child: InkWell(
+              child: Icon(
+                Icons.close,
+                color: AdpColors.red,
+                size: 35,
+              ),
+              onTap: _showAbortDialog,
+            ),
           ),
-          text: _selectedOperator == AdpPaymentOperator.orange
-              ? "Paiement en cours..."
-              : _selectedOperator == AdpPaymentOperator.moov
-                  ? "Veuillez approuver le paiement"
-                  : "Veuillez taper *144# puis 1 puis 1 pour confirmer le paiement",
-          textSpacing: 20,
-          textStyle: AdpTextStyles.primary_bold,
         ),
+        Center(
+          child: Container(
+            height: 400,
+            padding: EdgeInsets.all(20),
+            child: ALoader(
+              backgroundImage: NetworkImage(
+                // backgroundImage: AssetImage(
+                _selectedOperator == AdpPaymentOperator.orange
+                    ? AdpAsset.orange
+                    : _selectedOperator == AdpPaymentOperator.moov
+                        ? AdpAsset.moov
+                        : AdpAsset.mtn,
+              ),
+              text: _selectedOperator == AdpPaymentOperator.orange
+                  ? "Paiement en cours..."
+                  : _selectedOperator == AdpPaymentOperator.moov
+                      ? "Veuillez approuver le paiement"
+                      : "Veuillez taper *133# puis 1 puis 1 pour confirmer le paiement",
+              textSpacing: 20,
+              textStyle: AdpTextStyles.primary_bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Confirm dialog for payment abort
+  Widget buildShowDialog() {
+    return Container(
+      
+      padding: EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Spacer(),
+          SizedBox(height: 30),
+          Expanded(
+            flex: 0,
+            child: Container(
+              child: Text("Voulez-vous vraiment annuler le paiement ?",
+                  textAlign: TextAlign.center,
+                  style: AdpTextStyles.primary_bolder),
+            ),
+          ),
+          Spacer(),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: RaisedButton(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    "Non, continuer",
+                    style: AdpTextStyles.white_medium_bold,
+                  ),
+                ),
+                color: AdpColors.primary,
+                onPressed: _closeAbortDialog,
+              ),
+            ),
+          ),
+          SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: FlatButton(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    "Oui, annuler paiement",
+                    style: AdpTextStyles.error_semi_bold,
+                  ),
+                ),
+                onPressed: _abortPayment,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1373,8 +1458,6 @@ class _AdjeminPayState extends State<AdjeminPay>
   buildPaymentResultView() {
     return Center(
       child: Container(
-        // height: _paymentState == AdpPaymentState.successful ? 700 : 500,
-        // height: MediaQu,
         padding: _paymentState == AdpPaymentState.successful
             ? EdgeInsets.all(0)
             : EdgeInsets.all(20),
@@ -1400,7 +1483,6 @@ class _AdjeminPayState extends State<AdjeminPay>
                   fit: BoxFit.contain,
                 ),
               ),
-              // ),
             ),
             SizedBox(height: 30),
             Expanded(
@@ -1475,9 +1557,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                           : _paymentState == AdpPaymentState.cancelled
                               ? AdpColors.primary
                               : AdpColors.red,
-                  onPressed: () {
-                    Navigator.of(context).pop(_paymentResult);
-                  },
+                  onPressed: _exit,
                 ),
               ),
             ),
@@ -1489,7 +1569,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   }
 
   // ******* HELPERS
-  // *** Input Validation
+  // *** Input Validators
   bool _validateName(String clientName) {
     // bool _isPhoneValid = true;
 
@@ -1637,7 +1717,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     }
     return false;
   }
-
+  // *** Animation
   double _getOrangeOtpHeight() {
     if (_selectedOperator == AdpPaymentOperator.orange) {
       if (_otpErrorText.isNotEmpty) {
@@ -1647,7 +1727,42 @@ class _AdjeminPayState extends State<AdjeminPay>
     }
     return 0;
   }
+
   // _selectedOperator == AdpPaymentOperator.orange ? 90 : 0,
+  // *** Payment Abort
+  // Show Abort dialog view
+  _showAbortDialog() {
+    setState(() {
+      _isShowingDialog = true;
+    });
+  }
+
+  _closeAbortDialog() {
+    setState(() {
+      _isShowingDialog = false;
+    });
+  }
+
+  // Abort payment
+  _abortPayment() async {
+    // TODO pay
+    print(">>aborting payment");
+
+    _paymentResult = {
+      'code': 405,
+      'status': "CANCELLED",
+      'message': "Paiement annulé"
+    };
+
+    _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+
+    setState(() {
+      _paymentState = AdpPaymentState.cancelled;
+    });
+    _closeAbortDialog();
+    // _exit();
+  }
+
 
   // **** Notifying merchant's servers
   Future<dynamic> _notifyMerchant(paymentResult) async {
@@ -1727,6 +1842,12 @@ class _AdjeminPayState extends State<AdjeminPay>
     return data;
   }
 
+
+  // Exit the screen with the payment result
+  _exit() {
+    Navigator.of(context).pop(_paymentResult);
+  }
+  
   // **** Localisation & language helpers
   // String __(String title, [String locale = 'fr_FR']) {
   //   Map<String, String> fr = {
@@ -1750,7 +1871,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   //     'input_required_otp': "",
   //     'input_length_otp': "",
   //     'input_invalid_otp': "",
-  //     // 
+  //     //
   //     'info_text_mtn': "",
   //     'info_text_orange': "",
   //     'info_text_moov': "",
