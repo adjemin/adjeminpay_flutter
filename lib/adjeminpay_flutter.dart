@@ -78,6 +78,8 @@ class _AdjeminPayState extends State<AdjeminPay>
   // final _adpForm = GlobalKey<FormState>();
 
   AnimationController _animationController;
+  // close button
+  AnimationController _closeBtnAnimationController;
   Animation<Offset> _slideAnimation;
   Animation<double> _opacityAnimation;
 
@@ -183,7 +185,6 @@ class _AdjeminPayState extends State<AdjeminPay>
       // 'crypted_transaction_id': paymentData['transaction_token']
     };
     // Get token
-
 
     setState(() {
       _paymentState = AdpPaymentState.initiated;
@@ -655,7 +656,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   Widget build(BuildContext context) {
     // buildT
     // setState(() {
-      // _paymentState = AdpPaymentState.expired;
+    // _paymentState = AdpPaymentState.expired;
     //   _paymentState = AdpPaymentState.waiting;
     // });
     // _paymentResult = {
@@ -1398,59 +1399,66 @@ class _AdjeminPayState extends State<AdjeminPay>
 
   // Confirm dialog for payment abort
   Widget buildShowDialog() {
-    return Container(
-      
-      padding: EdgeInsets.all(20),
-      child: Column(
-        children: [
-          Spacer(),
-          SizedBox(height: 30),
-          Expanded(
-            flex: 0,
-            child: Container(
-              child: Text("Voulez-vous vraiment annuler le paiement ?",
-                  textAlign: TextAlign.center,
-                  style: AdpTextStyles.primary_bolder),
-            ),
-          ),
-          Spacer(),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(5),
-              child: RaisedButton(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: Text(
-                    "Non, continuer",
-                    style: AdpTextStyles.white_medium_bold,
+    return FadeTransition(
+      opacity: _opacityAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: Container(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Spacer(),
+              SizedBox(height: 30),
+              Expanded(
+                flex: 0,
+                child: Container(
+                  child: Text("Voulez-vous vraiment annuler le paiement ?",
+                      textAlign: TextAlign.center,
+                      style: AdpTextStyles.primary_bolder),
+                ),
+              ),
+              Spacer(),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: RaisedButton(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Text(
+                        "Non, continuer",
+                        style: AdpTextStyles.white_medium_bold,
+                      ),
+                    ),
+                    color: AdpColors.primary,
+                    onPressed: _closeAbortDialog,
                   ),
                 ),
-                color: AdpColors.primary,
-                onPressed: _closeAbortDialog,
               ),
-            ),
-          ),
-          SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(5),
-              child: FlatButton(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: Text(
-                    "Oui, annuler paiement",
-                    style: AdpTextStyles.error_semi_bold,
+              SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: FlatButton(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Text(
+                        "Oui, annuler paiement",
+                        style: AdpTextStyles.error_semi_bold,
+                      ),
+                    ),
+                    // color: AdpColors.red,
+                    onPressed: _abortPayment,
                   ),
                 ),
-                onPressed: _abortPayment,
               ),
-            ),
+              // Spacer(),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1458,6 +1466,8 @@ class _AdjeminPayState extends State<AdjeminPay>
   buildPaymentResultView() {
     return Center(
       child: Container(
+        // height: _paymentState == AdpPaymentState.successful ? 700 : 500,
+        // height: MediaQu,
         padding: _paymentState == AdpPaymentState.successful
             ? EdgeInsets.all(0)
             : EdgeInsets.all(20),
@@ -1483,6 +1493,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                   fit: BoxFit.contain,
                 ),
               ),
+              // ),
             ),
             SizedBox(height: 30),
             Expanded(
@@ -1569,7 +1580,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   }
 
   // ******* HELPERS
-  // *** Input Validators
+  // *** Input Validation
   bool _validateName(String clientName) {
     // bool _isPhoneValid = true;
 
@@ -1717,7 +1728,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     }
     return false;
   }
-  // *** Animation
+
   double _getOrangeOtpHeight() {
     if (_selectedOperator == AdpPaymentOperator.orange) {
       if (_otpErrorText.isNotEmpty) {
@@ -1729,17 +1740,20 @@ class _AdjeminPayState extends State<AdjeminPay>
   }
 
   // _selectedOperator == AdpPaymentOperator.orange ? 90 : 0,
-  // *** Payment Abort
   // Show Abort dialog view
   _showAbortDialog() {
     setState(() {
       _isShowingDialog = true;
     });
+    _animationController.forward();
   }
 
   _closeAbortDialog() {
-    setState(() {
-      _isShowingDialog = false;
+    _animationController.reverse();
+    Future.delayed(Duration(milliseconds: 100)).then((_) {
+      setState(() {
+        _isShowingDialog = false;
+      });
     });
   }
 
@@ -1763,6 +1777,10 @@ class _AdjeminPayState extends State<AdjeminPay>
     // _exit();
   }
 
+  // Exit the screen with the payment result
+  _exit() {
+    Navigator.of(context).pop(_paymentResult);
+  }
 
   // **** Notifying merchant's servers
   Future<dynamic> _notifyMerchant(paymentResult) async {
@@ -1842,12 +1860,6 @@ class _AdjeminPayState extends State<AdjeminPay>
     return data;
   }
 
-
-  // Exit the screen with the payment result
-  _exit() {
-    Navigator.of(context).pop(_paymentResult);
-  }
-  
   // **** Localisation & language helpers
   // String __(String title, [String locale = 'fr_FR']) {
   //   Map<String, String> fr = {
