@@ -7,3 +7,7 @@
 ## [0.1.2] - 11/09/2020
 
 * Added payment abort feature.
+  
+## [0.1.2+1] - 11/17/2020
+
+* Code refractor for static analysis.

@@ -78,7 +78,7 @@ class _AdjeminPayState extends State<AdjeminPay>
 
   AnimationController _animationController;
   // close button
-  AnimationController _closeBtnAnimationController;
+  // AnimationController _closeBtnAnimationController;
   Animation<Offset> _slideAnimation;
   Animation<double> _opacityAnimation;
 
