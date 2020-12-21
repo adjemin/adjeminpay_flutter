@@ -91,6 +91,14 @@ class _AdjeminPayState extends State<AdjeminPay>
   final _clientOrangeOtpFocusNode = FocusNode();
 
   var _isPageLoading = true;
+  var _paymentReloadIsEnabled = false;
+  var _paymentAbortIsEnabled = false;
+  var _isInfoContainerClosed = false;
+
+  //
+  String _notificationText = "";
+  String _notificationColor = "info";
+  //
   var _pageLoadingTexts = [
     "Initialisation...",
     "Connexion...",
@@ -125,6 +133,15 @@ class _AdjeminPayState extends State<AdjeminPay>
   // bool _isPaymentPending = false;
   // bool _isPaymentSuccessful = false;
   // bool _isPaymentFail = false;
+
+  String crypted_transaction_id;
+  String externalId;
+
+  var headers = {
+    'Authorization': "Bearer FlutterApKAdjemin",
+    'Content-Type': "application/json",
+    'Accept': "application/json"
+  };
 
   void _makePayment() async {
     print("=== ADP $_paymentState");
@@ -229,24 +246,30 @@ class _AdjeminPayState extends State<AdjeminPay>
             if (response['status'] == "PENDING") {
               print("Payment Pending...");
               print(response['data']);
+              print(response['mtnResponse']);
+              print(response['transaction']);
+              externalId = response['mtnResponse']['externalId'];
               // Launch confirmation wait
               setState(() {
                 _paymentState = AdpPaymentState.waiting;
                 _paymentResult = response;
               });
+              _activateReload();
+              _activateAbort(10);
+
               // ********* Checking transaction status
               // ********* And allowing transaction check
               var checkStatusUrl =
                   "https://api.adjeminpay.net/v1/auth/adjeminpay/checkMtnTransactionStatus";
               // var checkStatusUrl =
               //     "https://api.adjeminpay.net/v1/auth/checkPaymentStatus";
-
+              crypted_transaction_id = response['data'];
               var checkStatusBody = {
-                'crypted_transaction_id': response['data']
+                'crypted_transaction_id': crypted_transaction_id
               };
               // var checkStatusBody = {'transaction_id': widget.transactionId};
               int _checkStatusTriesCount = 0;
-              int _maxCheckStatusTries = 3; // TODO make this a config var
+              int _maxCheckStatusTries = 1; // TODO make this a config var
 
               finalResponseLoop:
               do {
@@ -655,7 +678,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   Widget build(BuildContext context) {
     // buildT
     // setState(() {
-    // _paymentState = AdpPaymentState.expired;
+    //   // _paymentState = AdpPaymentState.expired;
     //   _paymentState = AdpPaymentState.waiting;
     // });
     // _paymentResult = {
@@ -1350,9 +1373,11 @@ class _AdjeminPayState extends State<AdjeminPay>
   Widget buildPendingPaymentView() {
     return Stack(
       children: [
-        Positioned(
-          right: 10,
-          top: 10,
+        AnimatedPositioned(
+          duration: Duration(milliseconds: 300),
+          curve: Curves.bounceIn,
+          right: 20,
+          top: _paymentAbortIsEnabled ? 20 : -100,
           child: Container(
             padding: EdgeInsets.all(5),
             decoration: BoxDecoration(
@@ -1370,8 +1395,9 @@ class _AdjeminPayState extends State<AdjeminPay>
           ),
         ),
         Center(
-          child: Container(
-            height: 400,
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: 300),
+            height: _isInfoContainerClosed ? 0 : 400,
             padding: EdgeInsets.all(20),
             child: ALoader(
               backgroundImage: NetworkImage(
@@ -1392,7 +1418,84 @@ class _AdjeminPayState extends State<AdjeminPay>
             ),
           ),
         ),
+        // if (_paymentReloadIsEnabled)
+        AnimatedPositioned(
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          bottom: _paymentReloadIsEnabled ? 20 : -100,
+          left: 20,
+          right: 20,
+          // width: MediaQuery.of(context).size.width*.8,
+          child: Container(
+            padding: EdgeInsets.all(5),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                _buildStatusNotification(),
+                Text(
+                  "Après 20 secondes veuillez cliquer sur ce bouton",
+                  style: AdpTextStyles.primary_bold.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                FlatButton(
+                  color: AdpColors.primary200,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Text(
+                      ">Vérifier le paiement<",
+                      // style: AdpTextStyles.primary_bold,
+                      style: AdpTextStyles.white_semi_bold,
+                    ),
+                  ),
+                  onPressed: _checkPaymentStatus,
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildStatusNotification() {
+    var textColor;
+    // var textColor = Colors.white;
+    switch (_notificationColor) {
+      case "success":
+        textColor = AdpColors.accent;
+        break;
+      case "danger":
+        textColor = AdpColors.red;
+        break;
+      case "error":
+        textColor = AdpColors.red;
+        break;
+      default:
+        textColor = AdpColors.primary;
+        break;
+    }
+    return AnimatedContainer(
+      width: double.infinity,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      height: _notificationText.isEmpty ? 0 : 45,
+      margin: EdgeInsets.only(
+        bottom: 5,
+      ),
+      padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+      child: Center(
+        child: Text(
+          "$_notificationText",
+          style: AdpTextStyles.primary_bold.copyWith(
+            color: textColor,
+            fontSize: _notificationText.length > 20 ? 14 : 16,
+            // fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.start,
+        ),
+      ),
     );
   }
 
@@ -1578,6 +1681,30 @@ class _AdjeminPayState extends State<AdjeminPay>
     );
   }
 
+  // ***** LYTS
+  _activateReload([int seconds]) {
+    print(">> activating reload");
+    Future.delayed(Duration(seconds: seconds ?? 20)).then((_) {
+      print("<< reload activated");
+      _closeInfoContainer();
+      setState(() => _paymentReloadIsEnabled = true);
+    });
+  }
+
+  _activateAbort([int seconds]) {
+    print(">> activating abort");
+    Future.delayed(Duration(seconds: seconds ?? 10)).then((_) {
+      print("<< abort activated");
+      setState(() => _paymentAbortIsEnabled = true);
+    });
+  }
+
+  _closeInfoContainer() {
+    setState(() {
+      _isInfoContainerClosed = true;
+    });
+  }
+
   // ******* HELPERS
   // *** Input Validation
   bool _validateName(String clientName) {
@@ -1738,6 +1865,30 @@ class _AdjeminPayState extends State<AdjeminPay>
     return 0;
   }
 
+  // Notify payment status
+  _notifyStatus(
+    String message, {
+    int duration,
+    String type,
+    int delay,
+  }) {
+    print(">>_notify $message");
+    setState(() {
+      _notificationText = "";
+    });
+    Future.delayed(Duration(milliseconds: delay ?? 300)).then((_) {
+      setState(() {
+        _notificationText = message;
+        _notificationColor = type ?? "info";
+      });
+
+      Future.delayed(Duration(seconds: duration ?? 5))
+          .then((value) => setState(() => _notificationText = ""));
+    });
+  }
+
+  // _dismissNotification() => setState(() => _notificationText = "");
+
   // _selectedOperator == AdpPaymentOperator.orange ? 90 : 0,
   // Show Abort dialog view
   _showAbortDialog() {
@@ -1745,6 +1896,109 @@ class _AdjeminPayState extends State<AdjeminPay>
       _isShowingDialog = true;
     });
     _animationController.forward();
+  }
+
+  // Reloads the payment status from mtn
+  _checkPaymentStatus() async {
+    print(">> realoading status");
+    // ********* And allowing transaction check
+    var checkStatusUrl =
+        "https://api.adjeminpay.net/v1/get/status/mtn/$externalId";
+    if (externalId == null) {
+      print("externalId $externalId");
+      _notifyStatus("Veuillez réessayer", type: "error");
+      return;
+    }
+
+    print(">> $checkStatusUrl");
+
+    if (crypted_transaction_id == null) return;
+    print(">> crypted_transaction_id $crypted_transaction_id");
+    // var checkStatusBody = {'transaction_id': widget.transactionId};
+    _notifyStatus("Vérification paiement..");
+    var finalMtnResponse = await http.get(
+      checkStatusUrl,
+      headers: headers,
+    );
+    // Wait for approx 3 minutes 5secs if user doesn't approve or refuse
+    print('============ Mtn Manual Check Transaction ==========');
+    try {
+      if (finalMtnResponse.statusCode == 200) {
+        final decodedMtnResponse =
+            json.decode(finalMtnResponse.body) as Map<String, dynamic>;
+        print("response <<< ");
+        print(decodedMtnResponse);
+        final finalResponseData = decodedMtnResponse['mtnResponse'];
+        // print(">> $finalResponseData");
+
+        _notifyStatus(finalResponseData["status"]);
+        if (finalResponseData['status'] == "SUCCESSFUL") {
+          _paymentState = AdpPaymentState.successful;
+          _paymentResult = {
+            'status': "SUCCESSFUL",
+            'message': "Paiement réussi !"
+          };
+          print("===> going notify success");
+          setState(() {});
+          _paymentResult['notification'] =
+              await _notifyMerchant(_paymentResult);
+          print("<=== finished notify success");
+        }
+        if (finalResponseData['status'] == "CANCELLED") {
+          // check for payment timeout
+          // ! flutter sdk specific
+          print("<<< Payment refused");
+          _paymentState = AdpPaymentState.cancelled;
+          _paymentResult = {
+            'status': finalResponseData['status'],
+            'message': "Le paiement a été refusé"
+          };
+          print("===> going notify refused");
+          setState(() {});
+          _paymentResult['notification'] =
+              await _notifyMerchant(_paymentResult);
+          print("<=== finished notify refused");
+        }
+
+        if (finalResponseData['status'] == "FAILED") {
+          _paymentState = AdpPaymentState.failed;
+          _paymentResult = {
+            // 'code': finalResponseData['code'],
+            'status': finalResponseData['status'],
+            'message': "Le paiement a échoué !"
+          };
+          print("===> going notify failed");
+          setState(() {});
+          _paymentResult['notification'] =
+              await _notifyMerchant(_paymentResult);
+          print("<=== finished notify failed");
+        }
+        // **** Sending notification to ?notifyUrl
+        _notifyStatus("Paiement en attente");
+        return;
+      } else {
+        // throw payUrlResponse;
+        print('============ Mtn Manual Follow Transaction Error ==========');
+        print(finalMtnResponse.body);
+        setState(() {
+          // _paymentState = AdpPaymentState.errorHttp;
+          _paymentResult = {
+            'code': "00",
+            'status': "ERROR_STATUS",
+            'message':
+                "En attente de paiement du client. Mais Impossible de suivre le status du paiement"
+          };
+        });
+        return;
+        _notifyStatus("Veuillez réessayer", type: "error");
+        // _notifyStatus("Erreur status", type: "error");
+        _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+      }
+    } catch (error) {
+      print("<< check error caught");
+      print(error);
+    }
+    // ******* Immediate fail if solde insuffisant
   }
 
   _closeAbortDialog() {
@@ -2068,13 +2322,17 @@ String paymentMethodText(AdpPaymentMethod method) {
 String paymentOperatorText(AdpPaymentOperator op) {
   return op == AdpPaymentOperator.mtn
       ? "mtn"
-      : op == AdpPaymentOperator.orange ? "om" : "moov";
+      : op == AdpPaymentOperator.orange
+          ? "om"
+          : "moov";
 }
 
 String _selecteOperatorName(op) {
   return op == AdpPaymentOperator.mtn
       ? "MTN"
-      : op == AdpPaymentOperator.orange ? "Orange" : "Moov";
+      : op == AdpPaymentOperator.orange
+          ? "Orange"
+          : "Moov";
 }
 // enum MobileOperator { Mtn, Orange, Moov }
 // enum BankOperator { Visa, Mastercard }
@@ -2191,6 +2449,7 @@ class AdpColors {
   static const Color accent = Color(0xff2dc068);
   static const Color grey = Color(0xffeeeeee);
   static const Color primary100 = Color(0x33115093);
+  static const Color primary200 = Color(0xFF1B63AC);
   static const Color border = Color(0xffb4c3d9);
   static const Color red = Color(0xffdc3545);
 }
