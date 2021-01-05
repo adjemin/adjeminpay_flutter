@@ -1,5 +1,10 @@
 # ChangeLog AdjeminPay Flutter
 
+## [0.1.4] - 01/05/2021
+
+* Transaction close from pending screen
+* Improved user experience for mtn-ci status update unusual duration
+
 ## [0.1.3] - 11/17/2020
 
 * Added manual transaction status refresh button
