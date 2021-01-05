@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -94,6 +93,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   var _paymentReloadIsEnabled = false;
   var _paymentAbortIsEnabled = false;
   var _isInfoContainerClosed = false;
+  String _reloadInfoText = "";
 
   //
   String _notificationText = "";
@@ -316,7 +316,6 @@ class _AdjeminPayState extends State<AdjeminPay>
                     if (_checkStatusTriesCount > 3) {
                       print("<<<< Timeout close");
                       _paymentState = AdpPaymentState.expired;
-                      // TODO implement expired on js sdk
                       _paymentResult = {
                         'code': "419",
                         'status': "EXPIRED",
@@ -1412,7 +1411,9 @@ class _AdjeminPayState extends State<AdjeminPay>
                   ? "Paiement en cours..."
                   : _selectedOperator == AdpPaymentOperator.moov
                       ? "Veuillez approuver le paiement"
-                      : "Veuillez taper *133# puis 1 puis 1 pour confirmer le paiement",
+                      : (_paymentReloadIsEnabled
+                          ? "En attente du retour de MTN - Côte d'Ivoire.."
+                          : "Veuillez taper *133# puis 1 puis 1 pour confirmer le paiement"),
               textSpacing: 20,
               textStyle: AdpTextStyles.primary_bold,
             ),
@@ -1433,7 +1434,7 @@ class _AdjeminPayState extends State<AdjeminPay>
               children: [
                 _buildStatusNotification(),
                 Text(
-                  "Après 20 secondes veuillez cliquer sur ce bouton",
+                  "$_reloadInfoText",
                   style: AdpTextStyles.primary_bold.copyWith(
                     fontWeight: FontWeight.w400,
                   ),
@@ -1684,10 +1685,36 @@ class _AdjeminPayState extends State<AdjeminPay>
   // ***** LYTS
   _activateReload([int seconds]) {
     print(">> activating reload");
-    Future.delayed(Duration(seconds: seconds ?? 20)).then((_) {
+    Future.delayed(Duration(seconds: seconds ?? 30)).then((_) {
       print("<< reload activated");
-      _closeInfoContainer();
-      setState(() => _paymentReloadIsEnabled = true);
+      setState(() {
+        _paymentReloadIsEnabled = true;
+        _reloadInfoText = "En attente de la mise à jour du status..";
+      });
+    });
+    // 
+    Future.delayed(Duration(seconds: 50)).then((_) {
+      setState(() => _reloadInfoText =
+          "En attente de la mise à jour du status de paiement par MTN - Côte d'Ivoire..");
+    });
+    Future.delayed(Duration(seconds: 50+30)).then((_) {
+      setState(() => _reloadInfoText = "Le retour de MTN prend un temps anormalement long, cliquez sur ce bouton pour actualiser le status");
+    });
+    Future.delayed(Duration(seconds: 50+30+60)).then((_) {
+      setState(() => _reloadInfoText =
+          "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
+    });
+    Future.delayed(Duration(seconds: 50+30+60+30)).then((_) {
+      setState(() => _reloadInfoText =
+          "Si vous avez été débité, nous vous prions de patienter encore un peu");
+    });
+    Future.delayed(Duration(seconds: 50+30+60+30+5)).then((_) {
+      setState(() => _reloadInfoText =
+          "Veuillez cliquer sur le bouton ci-dessous pour actualiser manuellement..");
+    });
+    Future.delayed(Duration(seconds: 50+30+60+30+5+15)).then((_) {
+      setState(() => _reloadInfoText =
+          "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
     });
   }
 
@@ -1696,12 +1723,6 @@ class _AdjeminPayState extends State<AdjeminPay>
     Future.delayed(Duration(seconds: seconds ?? 10)).then((_) {
       print("<< abort activated");
       setState(() => _paymentAbortIsEnabled = true);
-    });
-  }
-
-  _closeInfoContainer() {
-    setState(() {
-      _isInfoContainerClosed = true;
     });
   }
 
@@ -1990,9 +2011,9 @@ class _AdjeminPayState extends State<AdjeminPay>
           };
         });
         return;
-        _notifyStatus("Veuillez réessayer", type: "error");
-        // _notifyStatus("Erreur status", type: "error");
-        _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+        // _notifyStatus("Veuillez réessayer", type: "error");
+        // // _notifyStatus("Erreur status", type: "error");
+        // _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
       }
     } catch (error) {
       print("<< check error caught");
@@ -2029,7 +2050,6 @@ class _AdjeminPayState extends State<AdjeminPay>
     _closeAbortDialog();
     // _exit();
   }
-
   // Exit the screen with the payment result
   _exit() {
     Navigator.of(context).pop(_paymentResult);
