@@ -1029,7 +1029,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                                   border: InputBorder.none,
                                   counter: Container(),
                                 ),
-                                maxLength: 8,
+                                maxLength: 10,
                                 // maxLengthEnforced: true,
                                 onChanged: (_) {
                                   setState(() {
