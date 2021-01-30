@@ -1,5 +1,9 @@
 # ChangeLog AdjeminPay Flutter
 
+## [0.1.5] - 01/30/2021
+
+* Added PNN support for Ivorian Numbers
+
 ## [0.1.4] - 01/05/2021
 
 * Transaction close from pending screen
