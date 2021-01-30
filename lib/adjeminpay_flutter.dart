@@ -1789,11 +1789,11 @@ class _AdjeminPayState extends State<AdjeminPay>
       return false;
     }
 
-    /*if (clientPhone.length != 10) {
-      _phoneErrorText = "Le téléphone doit être de 10 charactères";
+    if (clientPhone.length != 10) {
+      _phoneErrorText = "Le téléphone doit être de 10 chiffres";
       setState(() {});
       return false;
-    }*/
+    }
 
 
     String clientPrefix = clientPhone.substring(0, 2);
