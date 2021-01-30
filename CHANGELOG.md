@@ -1,5 +1,9 @@
 # ChangeLog AdjeminPay Flutter
 
+## [0.1.6] - 01/30/2021
+
+* 10 digits validation added
+
 ## [0.1.5] - 01/30/2021
 
 * Added PNN support for Ivorian Numbers
