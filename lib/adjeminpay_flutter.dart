@@ -1795,6 +1795,7 @@ class _AdjeminPayState extends State<AdjeminPay>
       return false;
     }*/
 
+
     String clientPrefix = clientPhone.substring(0, 2);
 
     switch (_selectedOperator) {
