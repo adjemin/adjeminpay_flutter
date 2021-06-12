@@ -1,0 +1,1 @@
+enum AdpPaymentOperator { mtn, orange, moov, visa, mastercard }

@@ -1,6 +1,6 @@
 name: adjeminpay_flutter
 description: The flutter sdk to make hassle free online payments via mobile money.
-version: 0.1.6
+version: 0.1.7
 homepage: https://github.com/adjemin/adjeminpay_flutter
 
 environment:
@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^0.12.1
+  http: ^0.13.3
 
 dev_dependencies:
   flutter_test:

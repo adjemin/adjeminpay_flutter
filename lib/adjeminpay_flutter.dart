@@ -1,39 +1,55 @@
-import 'dart:convert';
+import 'dart:io';
+import 'package:adjeminpay_flutter/AdjeminPayServiceImpl.dart';
+import 'package:adjeminpay_flutter/exceptions/AdjeminPayAuthException.dart';
+import 'package:adjeminpay_flutter/exceptions/AdjeminPayException.dart';
+import 'package:adjeminpay_flutter/models/AdpOperator.dart';
+import 'package:adjeminpay_flutter/models/AdpPaymentOperator.dart';
+import 'package:adjeminpay_flutter/models/AdpPaymentState.dart';
+import 'package:adjeminpay_flutter/models/PaymentMethod.dart';
+import 'package:adjeminpay_flutter/models/StatusCode.dart';
+import 'package:adjeminpay_flutter/models/Transaction.dart';
+import 'package:adjeminpay_flutter/models/TransactionStatus.dart';
+import 'package:adjeminpay_flutter/util/AdpAsset.dart';
+import 'package:adjeminpay_flutter/util/AdpColors.dart';
+import 'package:adjeminpay_flutter/util/AdpInfoText.dart';
+import 'package:adjeminpay_flutter/util/AdpTextStyles.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+
+import 'models/AdpPaymentMethod.dart';
 
 class AdjeminPay extends StatefulWidget {
-  final String apiKey;
-  final String applicationId;
 
-  final String notifyUrl;
-  final String transactionId;
-
-  final int amount;
-  final String currency;
+  final String clientId;
+  final String clientSecret;
+  final String merchantTransactionId;
   final String designation;
-  final String payerName;
-
+  final String buyerName;
+  final String buyerReference;
+  final String notificationUrl;
+  final double amount;
+  final String currencyCode;
   final String locale;
-
   final Function callback;
 
-  AdjeminPay({
-    @required this.apiKey,
-    @required this.applicationId,
-    this.notifyUrl,
-    @required this.transactionId,
-    @required this.amount,
-    this.currency,
+  const AdjeminPay({
+    @required this.clientId,
+    @required this.clientSecret,
+    @required this.merchantTransactionId,
     @required this.designation,
-    this.payerName,
+    @required this.amount,
+    @required this.currencyCode,
+    @required this.notificationUrl,
+    this.buyerName,
+    this.buyerReference,
     this.locale = 'fr_FR',
     this.callback,
-  })  : assert(apiKey != null, "apiKey must not be null"),
-        assert(applicationId != null, "applicationId must not be null"),
-        assert(transactionId != null, "transactionId must not be null"),
+  })  : assert(clientId != null, "clientId must not be null"),
+        assert(clientSecret != null, "clientSecret must not be null"),
+        assert(merchantTransactionId != null, "merchantTransactionId must not be null"),
         assert(amount != null, "amount must not be null"),
-        assert(designation != null, "designation must not be null");
+        assert(currencyCode != null, "currencyCode must not be null"),
+        assert(designation != null, "designation must not be null"),
+        assert(notificationUrl != null, "notificationUrl must not be null");
 
   @override
   _AdjeminPayState createState() => _AdjeminPayState();
@@ -134,21 +150,12 @@ class _AdjeminPayState extends State<AdjeminPay>
   // bool _isPaymentSuccessful = false;
   // bool _isPaymentFail = false;
 
-  String crypted_transaction_id;
-  String externalId;
-
-  var headers = {
-    'Authorization': "Bearer FlutterApKAdjemin",
-    'Content-Type': "application/json",
-    'Accept': "application/json"
-  };
-
   void _makePayment() async {
     print("=== ADP $_paymentState");
     print("pressed !");
 
     // ** Form validation
-    if (widget.payerName == null) {
+    if (widget.buyerName == null) {
       if (!_validateName(_clientNameController.text)) return;
     }
     if (!_validatePhone(_clientPhoneController.text)) return;
@@ -156,51 +163,11 @@ class _AdjeminPayState extends State<AdjeminPay>
     if (_selectedOperator == AdpPaymentOperator.orange) {
       if (!_validateOrangeOtp(_clientOrangeOtpController.text)) return;
     }
-
-    // setState(() {
-    //   _paymentState = AdpPaymentState.started;
-    // });
     print("=== ADP $_paymentState");
     print("validated !");
 
-    // _transactionId =
-    //     widget.transactionId ?? "Adjemin" + DateTime.now().toString();
-
-    String _designation = widget.designation.length > 191
-        ? widget.designation.substring(0, 191)
-        : widget.designation;
-
     // ******* HTTP API REQUESTS
     // STARTING API TREATMENT
-
-    var headers = {
-      'Authorization': "Bearer FlutterApKAdjemin",
-      'Content-Type': "application/json",
-      'Accept': "application/json"
-    };
-
-    var body = {
-      'adp_apikey': widget.apiKey,
-      'adp_application_id': widget.applicationId,
-      'adp_transaction_id': widget.transactionId,
-      'adp_designation': _designation,
-      'adp_amount': widget.amount,
-      'adp_currency': "XOF",
-
-      'method': paymentMethodText(_selectedMethod),
-      'operator': paymentOperatorText(_selectedOperator),
-
-      'name': widget.payerName ?? _clientNameController.text,
-      'phone_number': _clientPhoneController.text,
-      'otp': _clientOrangeOtpController.text,
-      // 'card_name': paymentData['card_name'],
-      // 'card_number': paymentData['card_number'],
-      // 'card_month': paymentData['card_month'],
-      // 'card_year': paymentData['card_year'],
-      // 'card_ccv': paymentData['card_ccv'],
-      // 'crypted_transaction_id': paymentData['transaction_token']
-    };
-    // Get token
 
     setState(() {
       _paymentState = AdpPaymentState.initiated;
@@ -211,62 +178,87 @@ class _AdjeminPayState extends State<AdjeminPay>
 
     print(">> ADP $_paymentState");
 
-    var url = "https://api.adjeminpay.net/v1/auth/makeFlutterPayment";
+    try{
 
-    var httpResponse =
-        await http.post(url, headers: headers, body: json.encode(body));
-    print("=== ADP $_paymentState");
-    print("waiting for httpResponse !");
-    print('============ Response Initiate Payment ==========');
-    print(httpResponse.statusCode);
-    print('============ Response Initiate Payment status ==========');
-    print(httpResponse.body);
+      final TransactionStatus transactionStatus = await new AdjeminPayServiceImpl().doTransactionOperation(
+          clientId: widget.clientId,
+          clientSecret: widget.clientSecret,
+          merchantTransactionId: widget.merchantTransactionId,
+          designation: widget.designation,
+          amount: widget.amount,
+          currencyCode: widget.currencyCode,
+          buyerName: _clientNameController.text.trim(),
+          buyerReference: '225'+_clientPhoneController.text.trim(),
+          otp: _clientOrangeOtpController.text.trim().isNotEmpty?int.parse(_clientOrangeOtpController.text):-1,
+          paymentMethodReference: paymentOperatorText(_selectedOperator)
+      );
 
-    if (httpResponse.statusCode == 200) {
-      final response = json.decode(httpResponse.body) as Map<String, dynamic>;
-      // Payment response
-      print(response);
-      if (response['code'] == 409) {
-        setState(() {
-          _paymentState = AdpPaymentState.error;
-          _paymentResult = response;
-        });
-        _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
-        print("=== ADP $_paymentState");
-
-        return;
-      }
       print(">>>>>>>>>>>>>>>>> Response Initiated 200 >>>>>>>>>>>>>>>>>>>>>");
       setState(() {
         _paymentState = AdpPaymentState.pending;
       });
-      if (body['method'] == "mobile") {
-        switch (body['operator']) {
-          case "mtn":
-            if (response['status'] == "PENDING") {
+
+      if(transactionStatus.data != null){
+
+        if(PaymentMethod.isMobilePayment(transactionStatus.data.paymentMethodCode)){
+          if(PaymentMethod.isORANGE(transactionStatus.data.paymentMethodCode)){
+
+            print(">>>>>> Orange Response");
+            print(transactionStatus.toJson());
+
+            if (transactionStatus.status == StatusCode.SUCCESS) {
+              //modal("Paiement réussi !", "Transaction terminée", "Veuillez patienter");
+              setState(() {
+                _paymentState = AdpPaymentState.successful;
+                _paymentResult = {
+                  'code': transactionStatus.code ?? 1,
+                  'status': transactionStatus.status ?? StatusCode.SUCCESS,
+                  'message': "Paiement réussi !"
+                };
+              });
+
+              print(transactionStatus.status);
+            }else if(transactionStatus.status == StatusCode.EXPIRED){
+              setState(() {
+                _paymentState = AdpPaymentState.failed;
+                _paymentResult = {
+                  'code': transactionStatus.code,
+                  'status': transactionStatus.status,
+                  'message': "Le code a expiré !"
+                };
+              });
+              print(transactionStatus.status);
+            }else {
+              setState(() {
+                _paymentState = AdpPaymentState.failed;
+                _paymentResult = {
+                  'code': transactionStatus.code,
+                  'status': transactionStatus.status,
+                  'message': "Le paiement a échoué !"
+                };
+              });
+              // modal("Transaction Terminée", response.message, "Echec");
+              print(transactionStatus.status);
+            }
+
+          }else if(PaymentMethod.isMTN(transactionStatus.data.paymentMethodCode)){
+
+            if (transactionStatus.status == StatusCode.PENDING) {
               print("Payment Pending...");
-              print(response['data']);
-              print(response['mtnResponse']);
-              print(response['transaction']);
-              externalId = response['mtnResponse']['externalId'];
+              print(transactionStatus);
+              print(transactionStatus.data);
+
               // Launch confirmation wait
               setState(() {
                 _paymentState = AdpPaymentState.waiting;
-                _paymentResult = response;
+                _paymentResult = transactionStatus.toJson();
               });
               _activateReload();
               _activateAbort(10);
 
               // ********* Checking transaction status
               // ********* And allowing transaction check
-              var checkStatusUrl =
-                  "https://api.adjeminpay.net/v1/auth/adjeminpay/checkMtnTransactionStatus";
-              // var checkStatusUrl =
-              //     "https://api.adjeminpay.net/v1/auth/checkPaymentStatus";
-              crypted_transaction_id = response['data'];
-              var checkStatusBody = {
-                'crypted_transaction_id': crypted_transaction_id
-              };
+
               // var checkStatusBody = {'transaction_id': widget.transactionId};
               int _checkStatusTriesCount = 0;
               int _maxCheckStatusTries = 1; // TODO make this a config var
@@ -274,210 +266,195 @@ class _AdjeminPayState extends State<AdjeminPay>
               finalResponseLoop:
               do {
                 _checkStatusTriesCount++;
-                var finalMtnResponse = await http.post(checkStatusUrl,
-                    headers: headers, body: json.encode(checkStatusBody));
-                // Wait for approx 3 minutes 5secs if user doesn't approve or refuse
-                print('============ Mtn Follow Transaction ==========');
-                // print(finalMtnResponse.body);
-                print("Essais restants");
-                print(5 - _checkStatusTriesCount);
+                try{
 
-                if (finalMtnResponse.statusCode == 200) {
-                  final decodedMtnResponse = json.decode(finalMtnResponse.body)
-                      as Map<String, dynamic>;
-                  final finalResponseData = decodedMtnResponse['flutter'];
+                  // Wait for approx 3 minutes 5secs if user doesn't approve or refuse
+                  print('============ Mtn Follow Transaction ==========');
+                  // print(finalMtnResponse.body);
+                  print("Essais restants");
+                  print(5 - _checkStatusTriesCount);
 
-                  print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-                  if (finalResponseData['status'] == "PENDING") {
-                    print("<<<<<<<<<AWAITING>>>>>>>>>");
-                    // Payment still pending, run check status erry 5 sec for 10 min
-                    continue finalResponseLoop;
-                  }
+                  var finalMtnResponse = await new AdjeminPayServiceImpl().getPaymentStatus(widget.clientId, widget.clientSecret, widget.merchantTransactionId);
 
-                  print("<<<<<<<<<<<<<<<<<<<<<<<< TERMINATED <<<<<<<<<<< ");
+                  if(finalMtnResponse != null){
 
-                  if (finalResponseData['status'] == "SUCCESSFUL") {
-                    _paymentState = AdpPaymentState.successful;
-                    _paymentResult = {
-                      'code': finalResponseData['code'] ?? 1,
-                      'status': finalResponseData['status'] ?? "SUCCESSFUL",
-                      'message':
-                          finalResponseData['message'] ?? "Paiement réussi !"
-                    };
-                    print("===> going notify success");
-                    setState(() {});
-                    _paymentResult['notification'] =
-                        await _notifyMerchant(_paymentResult);
-                    print("<=== finished notify success");
-                  }
-                  if (finalResponseData['status'] == "CANCELLED") {
-                    // check for payment timeout
-                    // ! flutter sdk specific
-                    if (_checkStatusTriesCount > 3) {
-                      print("<<<< Timeout close");
-                      _paymentState = AdpPaymentState.expired;
-                      _paymentResult = {
-                        'code': "419",
-                        'status': "EXPIRED",
-                        'message': "Le paiement a expiré"
-                      };
-                      print("===> going notify expired");
-                      setState(() {});
-                      _paymentResult['notification'] =
-                          await _notifyMerchant(_paymentResult);
-                      print("<=== finished notify expired");
-                    } else {
-                      print("<<< Payment refused");
-                      _paymentState = AdpPaymentState.cancelled;
-                      _paymentResult = {
-                        'code': finalResponseData['code'],
-                        'status': finalResponseData['status'],
-                        'message': finalResponseData['message'] ??
-                            "Le paiement a été refusé"
-                      };
-                      print("===> going notify refused");
-                      setState(() {});
-                      _paymentResult['notification'] =
-                          await _notifyMerchant(_paymentResult);
-                      print("<=== finished notify refused");
+                    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+                    if (finalMtnResponse.status == StatusCode.PENDING) {
+                      print("<<<<<<<<<AWAITING>>>>>>>>>");
+                      // Payment still pending, run check status erry 5 sec for 10 min
+                      continue finalResponseLoop;
                     }
-                  }
-                  if (finalResponseData['status' == "FAILED"]) {
-                    _paymentState = AdpPaymentState.failed;
-                    _paymentResult = {
-                      'code': finalResponseData['code'],
-                      'status': finalResponseData['status'],
-                      'message': finalResponseData['message'] ??
-                          "Le paiement a échoué !"
-                    };
-                    print("===> going notify failed");
-                    setState(() {});
-                    _paymentResult['notification'] =
-                        await _notifyMerchant(_paymentResult);
-                    print("<=== finished notify failed");
-                  }
-                  // **** Sending notification to ?notifyUrl
 
-                  break finalResponseLoop;
+                    print("<<<<<<<<<<<<<<<<<<<<<<<< TERMINATED <<<<<<<<<<< ");
 
-                  return;
-                } else {
+                    if (finalMtnResponse.status == StatusCode.SUCCESS) {
+                      _paymentState = AdpPaymentState.successful;
+                      _paymentResult = {
+                        'code': finalMtnResponse.code ?? StatusCode.codes[StatusCode.SUCCESS],
+                        'status': finalMtnResponse.status ?? StatusCode.SUCCESS,
+                        'message': "Paiement réussi !"
+                      };
+                      print("===> going notify success");
+                      setState(() {});
+
+                    }else if (finalMtnResponse.status == StatusCode.EXPIRED) {
+                      // check for payment timeout
+                      // ! flutter sdk specific
+                      if (_checkStatusTriesCount > 3) {
+                        print("<<<< Timeout close");
+                        _paymentState = AdpPaymentState.expired;
+                        _paymentResult = {
+                          'code': finalMtnResponse.code?? StatusCode.codes[StatusCode.EXPIRED],
+                          'status': finalMtnResponse.status ?? StatusCode.EXPIRED,
+                          'message': "Le paiement a expiré"
+                        };
+                        print("===> going notify expired");
+                        setState(() {});
+
+                      }
+                    }else if (finalMtnResponse.status == StatusCode.CANCELLED) {
+
+                        print("<<< Payment refused");
+                        _paymentState = AdpPaymentState.cancelled;
+                        _paymentResult = {
+                          'code': finalMtnResponse.code?? StatusCode.codes[StatusCode.CANCELLED],
+                          'status': finalMtnResponse.status?? StatusCode.CANCELLED,
+                          'message': "Le paiement a été refusé"
+                        };
+                        setState(() {});
+                    }else if (transactionStatus.status == StatusCode.FAILED) {
+                      _paymentState = AdpPaymentState.failed;
+                      _paymentResult = {
+                        'code': transactionStatus.code?? StatusCode.codes[StatusCode.FAILED],
+                        'status': transactionStatus.status?? StatusCode.FAILED,
+                        'message': "Le paiement a échoué !"
+                      };
+                      print("===> going notify failed");
+                      setState(() {});
+
+                      print("<=== finished notify failed");
+                    }else{
+
+                    }
+                    // **** Sending notification to ?notifyUrl
+
+                    break finalResponseLoop;
+
+                    return;
+                  }
+                }catch(error){
+
                   // throw payUrlResponse;
                   print('============ Mtn Follow Transaction Error ==========');
-                  print(httpResponse.body);
                   setState(() {
                     // _paymentState = AdpPaymentState.errorHttp;
                     _paymentResult = {
-                      'code': "00",
-                      'status': "ERROR_STATUS",
+                      'code': StatusCode.codes[StatusCode.OPERATION_ERROR],
+                      'status': StatusCode.OPERATION_ERROR,
                       'message':
-                          "En attente de paiement du client. Mais Impossible de suivre le status du paiement"
+                      "En attente de paiement du client. Mais Impossible de suivre le status du paiement"
                     };
                   });
 
-                  // **** Sending notification to ?notifyUrl
-                  if (_checkStatusTriesCount == 2) {
-                    // Stop after 2 successive network errors
-                    setState(() {
-                      _paymentState = AdpPaymentState.errorHttp;
-                    });
-                    break finalResponseLoop;
-                    _paymentResult['notification'] =
-                        await _notifyMerchant(_paymentResult);
-                    return;
-                  }
                   print("====== Retrying ");
                   await Future.delayed(Duration(seconds: 5));
+
                 }
               } while (_checkStatusTriesCount <= _maxCheckStatusTries ||
                   _paymentState == AdpPaymentState.waiting);
               // ******* Immediate fail if solde insuffisant
-            } else if (response['status'] == "FAILED") {
+            } else if (transactionStatus.status == StatusCode.FAILED) {
               print("Payment Failed...");
-              print(response['message']);
+              print(transactionStatus.message);
               setState(() {
                 _paymentState = AdpPaymentState.failed;
-                _paymentResult = response;
+                _paymentResult = transactionStatus.toJson();
               });
-              // **** Sending notification to ?notifyUrl
-              _paymentResult['notification'] =
-                  await _notifyMerchant(_paymentResult);
+
               return;
             }
-            break;
-          case "om":
-            print(">>>>>> Orange Response");
-            print(response);
 
-            if (response['code'] == 11) {
-              //modal("Paiement réussi !", "Transaction terminée", "Veuillez patienter");
-              setState(() {
-                _paymentState = AdpPaymentState.successful;
-                _paymentResult = response;
-              });
-
-              print(response['status']);
-            }
-            if (response['code'] == 00) {
-              setState(() {
-                _paymentState = AdpPaymentState.failed;
-                _paymentResult = response;
-              });
-              // modal("Transaction Terminée", response.message, "Echec");
-              print(response['status']);
-            }
-            if (response['code'] == -11) {
-              setState(() {
-                _paymentState = AdpPaymentState.failed;
-                _paymentResult = response;
-              });
-              //modal("Transaction Echouée",response.message,  "Echec");
-              print(response['status']);
-            }
-            // **** Sending notification to ?notifyUrl
-            _paymentResult['notification'] = await _notifyMerchant(response);
-            return;
-            break;
-          default:
-            return;
-            break;
+          }else{
+            // TODO Other payment method
+          }
+        }else{
+          // TODO Other payment method type
         }
+
       }
-      // setState(() {
-      //   _paymentState = AdpPaymentState.terminated;
-      // });
-    } else {
-      // throw payUrlResponse;
-      print('============ Response Error ==========');
-      print(httpResponse.body);
-      _paymentState = AdpPaymentState.errorHttp;
 
-      if (body['method'] == "mobile") {
-        var errorMessage = json.decode(httpResponse.body)['message'];
-        if (body['operator'] == "mtn") {
-          _paymentResult = {
-            'code': -200,
-            'status': "ERROR_HTTP",
-            'message': errorMessage ?? "La requete de paiement a échoué",
-          };
+
+
+    }catch(error){
+
+      if(error is AdjeminPayException){
+
+        print("=== ADP $_paymentState");
+
+        // throw payUrlResponse;
+        print('============ Response Error ==========');
+
+        if (PaymentMethod.isMobilePayment(paymentOperatorText(_selectedOperator))) {
+
+          if (PaymentMethod.isMTN(paymentOperatorText(_selectedOperator))) {
+            _paymentState = AdpPaymentState.failed;
+            _paymentResult = {
+              'code': StatusCode.codes[StatusCode.FAILED],
+              'status':StatusCode.FAILED,
+              'message': "La requete de paiement a échoué",
+            };
+
+            setState(() {
+
+            });
+
+            return;
+          }else if(PaymentMethod.isORANGE(paymentOperatorText(_selectedOperator))){
+            _paymentState = AdpPaymentState.failed;
+            _paymentResult = {
+              'code': StatusCode.codes[StatusCode.FAILED],
+              'status':StatusCode.FAILED,
+              'message': "La requete de paiement a échoué",
+            };
+
+            setState(() {
+
+            });
+
+            return;
+          }else{
+
+          }
+
         }
+
+
+      }else if(error is SocketException){
+        _paymentState = AdpPaymentState.errorHttp;
+        _paymentResult = {
+          'code': -1,
+          'status': "ERROR_HTTP",
+          'message': "Vérifiez votre connexion internet !",
+        };
         setState(() {});
-        _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
+        return;
+
+      }else{
+        _paymentState = AdpPaymentState.error;
+        _paymentResult = {
+          'code': StatusCode.codes[StatusCode.FAILED],
+          'status': StatusCode.FAILED,
+          'message': "La requete de paiement a échoué",
+        };
+        setState(() {});
         return;
       }
-      _paymentResult = {
-        'code': -200,
-        'status': "ERROR_HTTP",
-        'message': "La requete de paiement a échoué",
-      };
-      setState(() {});
-      _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
-      return;
+
     }
     Future.delayed(Duration(minutes: 2)).then((value) => setState(() {
-          // _paymentState = AdpPaymentState.empty;
-          Navigator.of(context).pop(_paymentResult);
-        }));
+      // _paymentState = AdpPaymentState.empty;
+      Navigator.of(context).pop(_paymentResult);
+    }));
   }
 
   // ********** OPERATIONS
@@ -486,7 +463,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   void initState() {
     super.initState();
 
-    _clientNameController.text = widget.payerName ?? "";
+    _clientNameController.text = widget.buyerName ?? "";
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(
@@ -532,139 +509,129 @@ class _AdjeminPayState extends State<AdjeminPay>
   }
 
   void loadPage() async {
-    if (widget.apiKey == null) {
+    if (widget.clientId == null) {
       exitWithError(
-          {'code': 401, 'status': "ERROR_CONFIG", 'message': "Missing apiKey"});
+          {'code': 401, 'status': "INVALID_PARAMS", 'message': "Missing clientId"});
       return;
     }
-    if (widget.applicationId == null) {
+    if (widget.clientSecret == null) {
       exitWithError({
         'code': 401,
-        'status': "ERROR_CONFIG",
-        'message': "Missing applicationId"
+        'status': "INVALID_PARAMS",
+        'message': "Missing clientSecret"
       });
       return;
     }
 
     await precacheImage(imageLogo.image, context);
     // **** Check auth
-    var url = "https://api.adjeminpay.net/v1/auth/getToken";
-    _iz();
-    var response = await http.post(
-      url,
-      headers: {
-        'Accept': "application/json",
-        'Content-Type': "application/json",
-      },
-      body: json.encode({
-        'apikey': widget.apiKey,
-        'application_id': widget.applicationId,
-        'grant-type': "user_credentials",
-      }),
-    );
-    _iz();
 
-    if (response.statusCode != 200) {
-      _paymentResult = {
-        'code': 401,
-        'status': "ERROR_CONFIG",
-        'message': "Erreur de configuration"
-      };
-      print(">>>>> ADP ERROR_CONFIG");
-      print(response.body);
+    _iz();
+    try{
+      var application = await new AdjeminPayServiceImpl().getApplication(widget.clientId, widget.clientSecret);
+      _iz();
+      if(application != null){
+
+        String _imageMerchantlogo = application.logo;
+
+        // **** Setup and Preload images
+        imageMerchantlogo = Image.network(_imageMerchantlogo);
+        imageBackground = Image.network(AdpAsset.background);
+        imageMobileMoney = Image.network(AdpAsset.mobile_money);
+        imageMtn = Image.network(AdpAsset.mtn);
+        imageOrange = Image.network(AdpAsset.orange);
+        imageMoov = Image.network(AdpAsset.moov);
+        imageBank = Image.network(AdpAsset.bank);
+        imageVisa = Image.network(AdpAsset.visa);
+        imageMastercard = Image.network(AdpAsset.mastercard);
+        imageCheck = Image.network(AdpAsset.check);
+        imageSuccessful = Image.network(AdpAsset.successful);
+        imageFailed = Image.network(AdpAsset.failed);
+        //
+
+        _iz();
+        await precacheImage(imageMerchantlogo.image, context);
+        _iz();
+        await precacheImage(imageBackground.image, context);
+        _dz();
+
+        await precacheImage(imageMobileMoney.image, context);
+        _iz();
+        await precacheImage(imageMtn.image, context);
+        _iz();
+        await precacheImage(imageOrange.image, context);
+
+        _dz();
+        await precacheImage(imageMoov.image, context);
+        _iz();
+        await precacheImage(imageBank.image, context);
+        _iz();
+        await precacheImage(imageVisa.image, context);
+
+        _dz();
+        await precacheImage(imageMastercard.image, context);
+
+        _iz();
+
+        await precacheImage(imageCheck.image, context);
+        _iz();
+
+        await precacheImage(imageSuccessful.image, context);
+        _dz();
+        await precacheImage(imageFailed.image, context);
+        _iz();
+
+        await Future.delayed(Duration(milliseconds: 100))
+            .then((value) => setState(() {
+          _isPageLoading = false;
+        }));
+
+      }else{
+        _paymentResult = {
+          'code': 401,
+          'status': "INVALID_PARAMS",
+          'message': "Error found"
+        };
+      }
+    }catch(error){
+
+      _iz();
+
+      if(error is AdjeminPayAuthException){
+        _paymentResult = {
+          'code': 401,
+          'status': "INVALID_CREDENTIALS",
+          'message': error.msg
+        };
+      }else if(error is AdjeminPayException){
+
+        _paymentResult = {
+          'code': 401,
+          'status': "INVALID_PARAMS",
+          'message': error.msg
+        };
+      }else{
+        _paymentResult = {
+          'code': 401,
+          'status': "INVALID_PARAMS",
+          'message': "Error found"
+        };
+      }
+
+      print(">>>>> ADP INVALID_PARAMS");
+      print("Error $error");
 
       Navigator.of(context).pop(_paymentResult);
       return;
     }
-    var decodedData = json.decode(response.body);
 
-    if (decodedData['access_token'] == null) {
-      _paymentResult = {
-        'code': 401,
-        'status': "ERROR_TOKEN",
-        'message': "Token de paiement introuvable"
-      };
-      Navigator.of(context).pop(_paymentResult);
-      return;
-    }
-    // If All good
-    // *** Check for transaction Id uniqueness
-    // url = "https://api.adjeminpay.net/v1/auth/checkTransactionStatus";
-    // // _iz();
-    // var transactionStatusResponse = await http.post(
-    //   url,
-    //   headers: {
-    //     'Accept': "application/json",
-    //     'Content-Type': "application/json",
-    //   },
-    //   body: json.encode({
-    //     'apikey': widget.apiKey,
-    //     'application_id': widget.applicationId,
-    //     'grant-type': "user_credentials",
-    //   }),
-    // );
-    // if (transactionStatusResponse.statusCode != 200) {}
 
-    _iz();
 
-    // imageMerchantlogo = decodedData['application_logo'];
-    String _imageMerchantlogo = decodedData['application_logo'];
 
-    // **** Setup and Preload images
-    imageMerchantlogo = Image.network(_imageMerchantlogo);
-    imageBackground = Image.network(AdpAsset.background);
-    imageMobileMoney = Image.network(AdpAsset.mobile_money);
-    imageMtn = Image.network(AdpAsset.mtn);
-    imageOrange = Image.network(AdpAsset.orange);
-    imageMoov = Image.network(AdpAsset.moov);
-    imageBank = Image.network(AdpAsset.bank);
-    imageVisa = Image.network(AdpAsset.visa);
-    imageMastercard = Image.network(AdpAsset.mastercard);
-    imageCheck = Image.network(AdpAsset.check);
-    imageSuccessful = Image.network(AdpAsset.successful);
-    imageFailed = Image.network(AdpAsset.failed);
-    //
-
-    _iz();
-    await precacheImage(imageMerchantlogo.image, context);
-    _iz();
-    await precacheImage(imageBackground.image, context);
-    _dz();
-
-    await precacheImage(imageMobileMoney.image, context);
-    _iz();
-    await precacheImage(imageMtn.image, context);
-    _iz();
-    await precacheImage(imageOrange.image, context);
-
-    _dz();
-    await precacheImage(imageMoov.image, context);
-    _iz();
-    await precacheImage(imageBank.image, context);
-    _iz();
-    await precacheImage(imageVisa.image, context);
-
-    _dz();
-    await precacheImage(imageMastercard.image, context);
-
-    _iz();
-
-    await precacheImage(imageCheck.image, context);
-    _iz();
-
-    await precacheImage(imageSuccessful.image, context);
-    _dz();
-    await precacheImage(imageFailed.image, context);
-    _iz();
-
-    await Future.delayed(Duration(milliseconds: 100))
-        .then((value) => setState(() {
-              _isPageLoading = false;
-            }));
   }
 
   void exitWithError(result) {
-    print(">>>>> ADP ERROR_CONFIG");
+    print(">>>>> ADP INVALID_PARAMS");
     setState(() {
       _isPageLoading = false;
       _paymentState = AdpPaymentState.error;
@@ -675,16 +642,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   // payment function
   @override
   Widget build(BuildContext context) {
-    // buildT
-    // setState(() {
-    //   // _paymentState = AdpPaymentState.expired;
-    //   _paymentState = AdpPaymentState.waiting;
-    // });
-    // _paymentResult = {
-    //   'code': 00,
-    //   'status': "Expired",
-    //   'message': "Le paiement a expiré",
-    // };
+
 
     return WillPopScope(
       onWillPop: () async => false,
@@ -692,22 +650,22 @@ class _AdjeminPayState extends State<AdjeminPay>
         body: SafeArea(
           child: _isPageLoading
               ? Center(
-                  child: Container(
-                    // height: 400,
-                    padding: EdgeInsets.all(20),
-                    child: ALoader(
-                      size: 150,
-                      backgroundImage: NetworkImage(AdpAsset.logo),
-                      // backgroundImage: AssetImage(AdpAsset.logo),
-                      text: "${_pageLoadingTexts[_z] ?? 'Chargement...'}",
-                      textSpacing: 20,
-                      textPadding: EdgeInsets.only(left: 40),
-                      textStyle: AdpTextStyles.primary_bolder,
+            child: Container(
+              // height: 400,
+              padding: EdgeInsets.all(20),
+              child: ALoader(
+                size: 150,
+                backgroundImage: NetworkImage(AdpAsset.logo),
+                // backgroundImage: AssetImage(AdpAsset.logo),
+                text: "${_pageLoadingTexts[_z] ?? 'Chargement...'}",
+                textSpacing: 20,
+                textPadding: EdgeInsets.only(left: 40),
+                textStyle: AdpTextStyles.primary_bolder,
 
-                      isTextCentered: false,
-                    ),
-                  ),
-                )
+                isTextCentered: false,
+              ),
+            ),
+          )
               : buildPage(),
         ),
       ),
@@ -756,7 +714,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                           ),
                           SizedBox(width: 10),
                           Text(
-                            "${widget.currency ?? 'FCFA'}",
+                            "${widget.currencyCode ?? 'FCFA'}",
                             style: AdpTextStyles.white,
                           ),
                         ],
@@ -886,73 +844,73 @@ class _AdjeminPayState extends State<AdjeminPay>
               direction: Axis.vertical,
               children: [
                 // *** Name INPUT
-                widget.payerName == null
+                widget.buyerName == null
                     ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 5),
-                                child: Text(
-                                  "Nom et prénoms",
-                                  style: AdpTextStyles.primary_bold,
-                                ),
-                              ),
-                            ],
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Padding(
+                          padding:
+                          const EdgeInsets.symmetric(vertical: 5),
+                          child: Text(
+                            "Nom et prénoms",
+                            style: AdpTextStyles.primary_bold,
                           ),
-                          AnimatedContainer(
-                            duration: Duration(milliseconds: 200),
-                            height: _nameErrorText.isEmpty ? 0 : 20,
-                            margin: EdgeInsets.only(
-                              left: 5,
-                              bottom: 5,
-                            ),
-                            child: Text(
-                              "$_nameErrorText",
-                              style: AdpTextStyles.error,
-                            ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: _nameErrorText.isEmpty
-                                    ? AdpColors.primary
-                                    : AdpColors.red,
-                                width: 1.3,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: EdgeInsets.only(left: 10),
-                            child: TextField(
-                              controller: _clientNameController,
-                              focusNode: _clientNameFocusNode,
-                              keyboardType: TextInputType.name,
-                              onChanged: (_) {
-                                setState(() {
-                                  _nameErrorText = '';
-                                });
-                              },
-                              onSubmitted: _validateName,
-                              style: _nameErrorText.isEmpty
-                                  ? AdpTextStyles.primary_bold
-                                  : AdpTextStyles.error,
-                              cursorColor: _nameErrorText.isEmpty
-                                  ? AdpColors.primary
-                                  : AdpColors.red,
-                              decoration: InputDecoration(
-                                contentPadding: EdgeInsets.all(0),
-                                hintText: "Nom et prénom",
-                                hintStyle: _nameErrorText.isEmpty
-                                    ? AdpTextStyles.primary_bold
-                                    : AdpTextStyles.error,
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
+                        ),
+                      ],
+                    ),
+                    AnimatedContainer(
+                      duration: Duration(milliseconds: 200),
+                      height: _nameErrorText.isEmpty ? 0 : 20,
+                      margin: EdgeInsets.only(
+                        left: 5,
+                        bottom: 5,
+                      ),
+                      child: Text(
+                        "$_nameErrorText",
+                        style: AdpTextStyles.error,
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: _nameErrorText.isEmpty
+                              ? AdpColors.primary
+                              : AdpColors.red,
+                          width: 1.3,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: EdgeInsets.only(left: 10),
+                      child: TextField(
+                        controller: _clientNameController,
+                        focusNode: _clientNameFocusNode,
+                        keyboardType: TextInputType.name,
+                        onChanged: (_) {
+                          setState(() {
+                            _nameErrorText = '';
+                          });
+                        },
+                        onSubmitted: _validateName,
+                        style: _nameErrorText.isEmpty
+                            ? AdpTextStyles.primary_bold
+                            : AdpTextStyles.error,
+                        cursorColor: _nameErrorText.isEmpty
+                            ? AdpColors.primary
+                            : AdpColors.red,
+                        decoration: InputDecoration(
+                          contentPadding: EdgeInsets.all(0),
+                          hintText: "Nom et prénom",
+                          hintStyle: _nameErrorText.isEmpty
+                              ? AdpTextStyles.primary_bold
+                              : AdpTextStyles.error,
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
                     : Container(),
                 // *** Phone INPUT
                 Column(
@@ -1024,7 +982,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                                 decoration: InputDecoration(
                                   contentPadding: EdgeInsets.all(0),
                                   hintText:
-                                      _phoneErrorText.isEmpty ? "00000000" : "",
+                                  _phoneErrorText.isEmpty ? "00000000" : "",
                                   hintStyle: AdpTextStyles.primary_bold,
                                   border: InputBorder.none,
                                   counter: Container(),
@@ -1057,12 +1015,12 @@ class _AdjeminPayState extends State<AdjeminPay>
                                   child: Image.network(
                                     // child: Image.asset(
                                     _selectedOperator ==
-                                            AdpPaymentOperator.orange
+                                        AdpPaymentOperator.orange
                                         ? AdpAsset.orange
                                         : _selectedOperator ==
-                                                AdpPaymentOperator.moov
-                                            ? AdpAsset.moov
-                                            : AdpAsset.mtn,
+                                        AdpPaymentOperator.moov
+                                        ? AdpAsset.moov
+                                        : AdpAsset.mtn,
                                   ),
                                 ),
                               ),
@@ -1088,17 +1046,17 @@ class _AdjeminPayState extends State<AdjeminPay>
                         children: [
                           _selectedOperator == AdpPaymentOperator.orange
                               ? Row(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 5),
-                                      child: Text(
-                                        "Code d'autorisation",
-                                        style: AdpTextStyles.primary_bold,
-                                      ),
-                                    ),
-                                  ],
-                                )
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 5),
+                                child: Text(
+                                  "Code d'autorisation",
+                                  style: AdpTextStyles.primary_bold,
+                                ),
+                              ),
+                            ],
+                          )
                               : Container(),
                           AnimatedContainer(
                             duration: Duration(milliseconds: 200),
@@ -1181,8 +1139,8 @@ class _AdjeminPayState extends State<AdjeminPay>
                 _selectedOperator == AdpPaymentOperator.orange
                     ? '${AdpInfoText.orange}'
                     : _selectedOperator == AdpPaymentOperator.moov
-                        ? "${AdpInfoText.moov}"
-                        : "${AdpInfoText.mtn}",
+                    ? "${AdpInfoText.moov}"
+                    : "${AdpInfoText.mtn}",
                 style: AdpTextStyles.primary_bold,
               ),
             ),
@@ -1197,9 +1155,9 @@ class _AdjeminPayState extends State<AdjeminPay>
                     child: _paymentState != AdpPaymentState.empty
                         ? CircularProgressIndicator()
                         : Text(
-                            "Payer",
-                            style: AdpTextStyles.white_bold,
-                          ),
+                      "Payer",
+                      style: AdpTextStyles.white_bold,
+                    ),
                     onPressed: _paymentState != AdpPaymentState.empty
                         ? null
                         : _makePayment),
@@ -1208,19 +1166,19 @@ class _AdjeminPayState extends State<AdjeminPay>
             // ****** Cancel button
             _paymentState == AdpPaymentState.empty
                 ? Container(
-                    width: double.infinity,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: FlatButton(
-                        padding: EdgeInsets.symmetric(vertical: 10),
-                        child: Text(
-                          "Annuler",
-                          style: AdpTextStyles.error_semi_bold,
-                        ),
-                        onPressed: _showAbortDialog,
-                      ),
-                    ),
-                  )
+              width: double.infinity,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: FlatButton(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    "Annuler",
+                    style: AdpTextStyles.error_semi_bold,
+                  ),
+                  onPressed: _showAbortDialog,
+                ),
+              ),
+            )
                 : Container(),
           ],
         ),
@@ -1231,10 +1189,6 @@ class _AdjeminPayState extends State<AdjeminPay>
   // Payment Method card
   Expanded buildPaymentMethod(
       String name, String image, AdpPaymentMethod paymentMethod) {
-    // var names = name.split(" ");
-    // name = '';
-    // names.forEach((n) => name += n + "\n");
-    // name.trimRight();
     bool _isSelected = paymentMethod == _selectedMethod;
 
     return Expanded(
@@ -1313,9 +1267,9 @@ class _AdjeminPayState extends State<AdjeminPay>
           decoration: BoxDecoration(
             border: _isSelected
                 ? Border.all(
-                    color: AdpColors.primary,
-                    width: 1.3,
-                  )
+              color: AdpColors.primary,
+              width: 1.3,
+            )
                 : null,
             borderRadius: BorderRadius.circular(10),
             color: _isSelected ? AdpColors.primary100 : Colors.white,
@@ -1404,16 +1358,16 @@ class _AdjeminPayState extends State<AdjeminPay>
                 _selectedOperator == AdpPaymentOperator.orange
                     ? AdpAsset.orange
                     : _selectedOperator == AdpPaymentOperator.moov
-                        ? AdpAsset.moov
-                        : AdpAsset.mtn,
+                    ? AdpAsset.moov
+                    : AdpAsset.mtn,
               ),
               text: _selectedOperator == AdpPaymentOperator.orange
                   ? "Paiement en cours..."
                   : _selectedOperator == AdpPaymentOperator.moov
-                      ? "Veuillez approuver le paiement"
-                      : (_paymentReloadIsEnabled
-                          ? "En attente du retour de MTN - Côte d'Ivoire.."
-                          : "Veuillez taper *133# puis 1 puis 1 pour confirmer le paiement"),
+                  ? "Veuillez approuver le paiement"
+                  : (_paymentReloadIsEnabled
+                  ? "En attente du retour de MTN - Côte d'Ivoire.."
+                  : "Veuillez taper *133# puis 1 puis 1 pour confirmer le paiement"),
               textSpacing: 20,
               textStyle: AdpTextStyles.primary_bold,
             ),
@@ -1589,10 +1543,10 @@ class _AdjeminPayState extends State<AdjeminPay>
                   _paymentState == AdpPaymentState.successful
                       ? AdpAsset.successful
                       : _paymentState == AdpPaymentState.terminated
-                          ? AdpAsset.logo
-                          : _paymentState == AdpPaymentState.cancelled
-                              ? AdpAsset.logo
-                              : AdpAsset.failed,
+                      ? AdpAsset.logo
+                      : _paymentState == AdpPaymentState.cancelled
+                      ? AdpAsset.logo
+                      : AdpAsset.failed,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -1606,21 +1560,21 @@ class _AdjeminPayState extends State<AdjeminPay>
                   _paymentState == AdpPaymentState.error
                       ? "Erreur :("
                       : _paymentState == AdpPaymentState.errorHttp
-                          ? "Erreur Réseau :("
-                          : _paymentState == AdpPaymentState.failed
-                              ? "Echec du paiement"
-                              : _paymentState == AdpPaymentState.cancelled
-                                  ? "Paiement Annulé !"
-                                  : _paymentState == AdpPaymentState.successful
-                                      ? "Paiement réussi !"
-                                      : _paymentState == AdpPaymentState.expired
-                                          ? "Paiement Expiré"
-                                          : "Paiement Terminé",
+                      ? "Erreur Réseau :("
+                      : _paymentState == AdpPaymentState.failed
+                      ? "Echec du paiement"
+                      : _paymentState == AdpPaymentState.cancelled
+                      ? "Paiement Annulé !"
+                      : _paymentState == AdpPaymentState.successful
+                      ? "Paiement réussi !"
+                      : _paymentState == AdpPaymentState.expired
+                      ? "Paiement Expiré"
+                      : "Paiement Terminé",
                   style: _paymentState == AdpPaymentState.successful
                       ? AdpTextStyles.accent_bold
                       : _paymentState == AdpPaymentState.terminated
-                          ? AdpTextStyles.primary_bolder
-                          : AdpTextStyles.error_bold,
+                      ? AdpTextStyles.primary_bolder
+                      : AdpTextStyles.error_bold,
                 ),
               ),
             ),
@@ -1633,16 +1587,16 @@ class _AdjeminPayState extends State<AdjeminPay>
                   _paymentState == AdpPaymentState.error
                       ? "${_paymentResult['message'] ?? ''}"
                       : _paymentState == AdpPaymentState.errorHttp
-                          ? "${_paymentResult['message'] ?? 'Vérifiez votre connexion et réessayez'}"
-                          : _paymentState == AdpPaymentState.failed
-                              ? "${_paymentResult['message'] ?? ''}"
-                              : _paymentState == AdpPaymentState.successful
-                                  ? "${_paymentResult['message'] ?? ''}"
-                                  : _paymentState == AdpPaymentState.cancelled
-                                      ? "Le paiement a été refusé"
-                                      : _paymentState == AdpPaymentState.expired
-                                          ? "${_paymentResult['message'] ?? ''}"
-                                          : "Merci d'avoir utilisé AdjeminPay !",
+                      ? "${_paymentResult['message'] ?? 'Vérifiez votre connexion et réessayez'}"
+                      : _paymentState == AdpPaymentState.failed
+                      ? "${_paymentResult['message'] ?? ''}"
+                      : _paymentState == AdpPaymentState.successful
+                      ? "${_paymentResult['message'] ?? ''}"
+                      : _paymentState == AdpPaymentState.cancelled
+                      ? "Le paiement a été refusé"
+                      : _paymentState == AdpPaymentState.expired
+                      ? "${_paymentResult['message'] ?? ''}"
+                      : "Merci d'avoir utilisé AdjeminPay !",
                   textAlign: TextAlign.center,
                   style: AdpTextStyles.primary_bold,
                 ),
@@ -1653,7 +1607,7 @@ class _AdjeminPayState extends State<AdjeminPay>
               width: double.infinity,
               padding: EdgeInsets.symmetric(
                   horizontal:
-                      _paymentState == AdpPaymentState.successful ? 20 : 0),
+                  _paymentState == AdpPaymentState.successful ? 20 : 0),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(5),
                 child: RaisedButton(
@@ -1667,10 +1621,10 @@ class _AdjeminPayState extends State<AdjeminPay>
                   color: _paymentState == AdpPaymentState.successful
                       ? AdpColors.accent
                       : _paymentState == AdpPaymentState.terminated
-                          ? AdpColors.primary
-                          : _paymentState == AdpPaymentState.cancelled
-                              ? AdpColors.primary
-                              : AdpColors.red,
+                      ? AdpColors.primary
+                      : _paymentState == AdpPaymentState.cancelled
+                      ? AdpColors.primary
+                      : AdpColors.red,
                   onPressed: _exit,
                 ),
               ),
@@ -1692,29 +1646,29 @@ class _AdjeminPayState extends State<AdjeminPay>
         _reloadInfoText = "En attente de la mise à jour du status..";
       });
     });
-    // 
+    //
     Future.delayed(Duration(seconds: 50)).then((_) {
       setState(() => _reloadInfoText =
-          "En attente de la mise à jour du status de paiement par MTN - Côte d'Ivoire..");
+      "En attente de la mise à jour du status de paiement par MTN - Côte d'Ivoire..");
     });
     Future.delayed(Duration(seconds: 50+30)).then((_) {
       setState(() => _reloadInfoText = "Le retour de MTN prend un temps anormalement long, cliquez sur ce bouton pour actualiser le status");
     });
     Future.delayed(Duration(seconds: 50+30+60)).then((_) {
       setState(() => _reloadInfoText =
-          "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
+      "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
     });
     Future.delayed(Duration(seconds: 50+30+60+30)).then((_) {
       setState(() => _reloadInfoText =
-          "Si vous avez été débité, nous vous prions de patienter encore un peu");
+      "Si vous avez été débité, nous vous prions de patienter encore un peu");
     });
     Future.delayed(Duration(seconds: 50+30+60+30+5)).then((_) {
       setState(() => _reloadInfoText =
-          "Veuillez cliquer sur le bouton ci-dessous pour actualiser manuellement..");
+      "Veuillez cliquer sur le bouton ci-dessous pour actualiser manuellement..");
     });
     Future.delayed(Duration(seconds: 50+30+60+30+5+15)).then((_) {
       setState(() => _reloadInfoText =
-          "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
+      "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
     });
   }
 
@@ -1775,7 +1729,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     if (clientPhone.isEmpty) {
       setState(() {
         _phoneErrorText =
-            "Veuillez entrer votre numéro ${_selecteOperatorName(_selectedOperator)} money";
+        "Veuillez entrer votre numéro ${_selecteOperatorName(_selectedOperator)} money";
       });
       return false;
     }
@@ -1840,7 +1794,6 @@ class _AdjeminPayState extends State<AdjeminPay>
       return true;
     } else {
       FocusScope.of(context).unfocus();
-      // _makePayment();
       return true;
     }
   }
@@ -1871,7 +1824,7 @@ class _AdjeminPayState extends State<AdjeminPay>
 
     if (_validatePhone(_clientPhoneController.text)) {
       FocusScope.of(context).unfocus();
-      // _makePayment();
+
       return true;
     }
     return false;
@@ -1889,11 +1842,11 @@ class _AdjeminPayState extends State<AdjeminPay>
 
   // Notify payment status
   _notifyStatus(
-    String message, {
-    int duration,
-    String type,
-    int delay,
-  }) {
+      String message, {
+        int duration,
+        String type,
+        int delay,
+      }) {
     print(">>_notify $message");
     setState(() {
       _notificationText = "";
@@ -1924,76 +1877,53 @@ class _AdjeminPayState extends State<AdjeminPay>
   _checkPaymentStatus() async {
     print(">> realoading status");
     // ********* And allowing transaction check
-    var checkStatusUrl =
-        "https://api.adjeminpay.net/v1/get/status/mtn/$externalId";
-    if (externalId == null) {
-      print("externalId $externalId");
-      _notifyStatus("Veuillez réessayer", type: "error");
-      return;
-    }
-
-    print(">> $checkStatusUrl");
-
-    if (crypted_transaction_id == null) return;
-    print(">> crypted_transaction_id $crypted_transaction_id");
     // var checkStatusBody = {'transaction_id': widget.transactionId};
     _notifyStatus("Vérification paiement..");
-    var finalMtnResponse = await http.get(
-      checkStatusUrl,
-      headers: headers,
-    );
+    var finalMtnResponse = await new AdjeminPayServiceImpl().getPaymentStatus(widget.clientId, widget.clientSecret, widget.merchantTransactionId);
     // Wait for approx 3 minutes 5secs if user doesn't approve or refuse
     print('============ Mtn Manual Check Transaction ==========');
     try {
-      if (finalMtnResponse.statusCode == 200) {
-        final decodedMtnResponse =
-            json.decode(finalMtnResponse.body) as Map<String, dynamic>;
+      if (finalMtnResponse != null) {
+
         print("response <<< ");
-        print(decodedMtnResponse);
-        final finalResponseData = decodedMtnResponse['mtnResponse'];
+        print(finalMtnResponse);
+        final finalResponseData = finalMtnResponse.data;
         // print(">> $finalResponseData");
 
-        _notifyStatus(finalResponseData["status"]);
-        if (finalResponseData['status'] == "SUCCESSFUL") {
+        _notifyStatus(finalResponseData.status);
+        if (finalResponseData.status == Transaction.SUCCESSFUL) {
           _paymentState = AdpPaymentState.successful;
           _paymentResult = {
-            'status': "SUCCESSFUL",
+            'status': Transaction.SUCCESSFUL,
             'message': "Paiement réussi !"
           };
           print("===> going notify success");
           setState(() {});
-          _paymentResult['notification'] =
-              await _notifyMerchant(_paymentResult);
           print("<=== finished notify success");
         }
-        if (finalResponseData['status'] == "CANCELLED") {
+        if (finalResponseData.status == Transaction.CANCELLED) {
           // check for payment timeout
           // ! flutter sdk specific
           print("<<< Payment refused");
           _paymentState = AdpPaymentState.cancelled;
           _paymentResult = {
-            'status': finalResponseData['status'],
+            'status': Transaction.CANCELLED,
             'message': "Le paiement a été refusé"
           };
           print("===> going notify refused");
           setState(() {});
-          _paymentResult['notification'] =
-              await _notifyMerchant(_paymentResult);
           print("<=== finished notify refused");
         }
 
-        if (finalResponseData['status'] == "FAILED") {
+        if (finalResponseData.status == Transaction.FAILED) {
           _paymentState = AdpPaymentState.failed;
           _paymentResult = {
-            // 'code': finalResponseData['code'],
-            'status': finalResponseData['status'],
+            'status': Transaction.FAILED,
             'message': "Le paiement a échoué !"
           };
           print("===> going notify failed");
           setState(() {});
-          _paymentResult['notification'] =
-              await _notifyMerchant(_paymentResult);
-          print("<=== finished notify failed");
+
         }
         // **** Sending notification to ?notifyUrl
         _notifyStatus("Paiement en attente");
@@ -2001,14 +1931,14 @@ class _AdjeminPayState extends State<AdjeminPay>
       } else {
         // throw payUrlResponse;
         print('============ Mtn Manual Follow Transaction Error ==========');
-        print(finalMtnResponse.body);
+        print(finalMtnResponse.toJson());
         setState(() {
           // _paymentState = AdpPaymentState.errorHttp;
           _paymentResult = {
             'code': "00",
             'status': "ERROR_STATUS",
             'message':
-                "En attente de paiement du client. Mais Impossible de suivre le status du paiement"
+            "En attente de paiement du client. Mais Impossible de suivre le status du paiement"
           };
         });
         return;
@@ -2036,15 +1966,11 @@ class _AdjeminPayState extends State<AdjeminPay>
   _abortPayment() async {
     // TODO pay
     print(">>aborting payment");
-
     _paymentResult = {
       'code': 405,
       'status': "CANCELLED",
       'message': "Paiement annulé"
     };
-
-    _paymentResult['notification'] = await _notifyMerchant(_paymentResult);
-
     setState(() {
       _paymentState = AdpPaymentState.cancelled;
     });
@@ -2055,178 +1981,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   _exit() {
     Navigator.of(context).pop(_paymentResult);
   }
-
-  // **** Notifying merchant's servers
-  Future<dynamic> _notifyMerchant(paymentResult) async {
-    print(">>>>>>>>>>>> Validating notification url");
-    if (widget.notifyUrl == null) {
-      print("<== Notify url is null");
-      return {
-        'notifyStatus': null,
-        'notifyMessage': "notifyUrl is null",
-      };
-    }
-    if (widget.notifyUrl.isEmpty) {
-      print("<== Notify url is empty");
-      return {
-        'notifyStatus': "EMPTY",
-        'notifyMessage': "notifyUrl is empty",
-      };
-    }
-    if (!(widget.notifyUrl.contains("http:") ||
-        widget.notifyUrl.contains("https:"))) {
-      print("<== Notify url isn't a valid url");
-      return {
-        'notifyStatus': "INVALID_URL",
-        'notifyMessage': "notifyUrl is not a valid url",
-      };
-    }
-    print(">>>>>>>>>>>> Notifying Merchant Backend");
-    print(widget.notifyUrl);
-    var response = await http.post(
-      widget.notifyUrl,
-      headers: {
-        'Content-Type': "application/json",
-        'Accept': "application/json"
-      },
-      body: json.encode({
-        'transaction_id': widget.transactionId,
-        'code': paymentResult['code'],
-        'status': paymentResult['status'],
-        'message': paymentResult['message'],
-      }),
-    );
-    if (response.statusCode != 200) {
-      print("<<<<<< Merchant notification Error");
-      print(response.body);
-      print("<<=");
-      print(widget.transactionId);
-      // print(response);
-      if (response.statusCode >= 500) {
-        return {
-          'notifyStatus': "SERVER_ERROR",
-          'notifyMessage': json.decode(response.body)['message'] ??
-              "Error in your notifyUrl Server",
-        };
-      }
-
-      return {
-        'notifyStatus': "ERROR",
-        'notifyMessage': json.decode(response.body)['message'] ??
-            "Error in your notifyUrl Server",
-      };
-    }
-
-    print("<<< Notified Merchant Backend");
-    // print(json.decode(response.body));
-    print("<<< ==");
-    print(response.body);
-
-    var data = {
-      'notifyStatus': "SUCCESS",
-      'notifyMessage': "Your backend has been notified",
-    };
-
-    if (widget.callback != null) {
-      print(">>>>>>>>>>>> Executing callback Backend");
-      widget.callback(_paymentResult);
-    }
-    return data;
-  }
-
-  // **** Localisation & language helpers
-  // String __(String title, [String locale = 'fr_FR']) {
-  //   Map<String, String> fr = {
-  //     'total_to_pay': "Total à payer",
-  //     'select_method': "Sélectionnez un moyen de paiement",
-  //     'mobile_money': "Mobile Money",
-  //     'bank_card': "Carte Banquaire",
-  //     'name': "Nom et prénoms",
-  //     'momo_account': "Compte Mobile Money",
-  //     // error texts
-  //     'input_empty_name': "",
-  //     'input_invalid_name': "",
-  //     //
-  //     'input_required_phone': "",
-  //     'input_length_phone': "",
-  //     'input_invalid_phone': "",
-  //     'input_invalid_mtn_phone': "",
-  //     'input_invalid_orange_phone': "",
-  //     'input_invalid_moov_phone': "",
-  //     //
-  //     'input_required_otp': "",
-  //     'input_length_otp': "",
-  //     'input_invalid_otp': "",
-  //     //
-  //     'info_text_mtn': "",
-  //     'info_text_orange': "",
-  //     'info_text_moov': "",
-  //     //
-  //     'pay_btn': "Payer",
-  //     'cancel_btn': "Annuler",
-  //     'terminate_btn': "Terminer",
-  //   };
-  //   Map<String, String> en = {'': ''};
-  //   if (locale == 'en_EN') {
-  //     return en[title];
-  //   }
-  //   return fr[title];
-  // }
 }
-
-//********** DOCUMENTATION */
-
-// var paymentResult = await Navigator.push(
-//     context,
-//     new MaterialPageRoute(
-//       builder: (context) => AdjeminPay(
-//           apiKey: "eyJpdiI6IkpNQ05tWmtGc0FVbWc1VFhFM",
-//           applicationId: "f9d37e",
-//           transactionId:
-//               "Adjemin${widget.element.customer_id}_${widget.element.id}_${widget.session.user.id}_${DateTime.now().second.toString()}",
-//           amount: total,
-//           currency: "",
-//           designation: widget.element.title,
-//           payerName: widget.session.user.name),
-//     ));
-// print(">>>>>>>>>> PAYMENT RESULTS <<<<<<<<<<<<");
-// print(paymentResult);
-
-// **** DOCS ************* /
-
-// payWithAdjeminPay(value.data.transaction);
-
-// void payWithAdjeminPay(OrderTransaction data) async {
-//     Map<String, dynamic> paymentResult = await Navigator.push(
-//         context,
-//         new MaterialPageRoute(
-//           builder: (context) => AdjeminPay(
-//               apiKey: Constants.ADJEMINPAY_API_KEY,
-//               applicationId: Constants.ADJEMINPAY_APPLICATION_ID,
-//               transactionId: "${data.transaction_id}",
-//               amount: int.parse("${data.amount}"),
-//               currency:
-//                   Currency.byCode(widget.session.currencies, data.currency_code)
-//                       .short_name,
-//               designation: data.transaction_designation,
-//               // designation: widget.element.title,
-//               payerName: widget.session.user.name),
-//         ));
-
-//     print(">>>>>>>>>> PAYMENT RESULTS <<<<<<<<<<<<");
-//     print(paymentResult);
-
-//     if (paymentResult != null) {
-//       if (paymentResult['status'] == "SUCCESSFUL") {
-//         onPaymentSuccess();
-//       } else {
-//         Dialogs.error(context, "Erreur Rencontrée", paymentResult['message'],
-//             () {
-//           payWithAdjeminPay(data);
-//         }, () {});
-//       }
-//     } else {}
-//   }
 
 // **** GLOBAL FUNCTIONS
 
@@ -2292,7 +2047,7 @@ class ALoader extends StatelessWidget {
                           child: child ?? Container(),
                           backgroundImage: backgroundImage ?? null,
                           backgroundColor:
-                              backgroundColor ?? Colors.transparent,
+                          backgroundColor ?? Colors.transparent,
                         ),
                       ),
                     ),
@@ -2316,25 +2071,8 @@ class ALoader extends StatelessWidget {
   }
 }
 
-// ** PAYMENT DATA
-// switchs enums
-enum AdpPaymentMethod { mobile, bank }
-enum AdpPaymentOperator { mtn, orange, moov, visa, mastercard }
-// payment states
-enum AdpPaymentState {
-  empty,
-  started, // payer button clicked
-  initiated, // form has been validated
-  pending, // waiting on network
-  waiting, // waiting on mtn client to approve payment
-  error, // unexpected error occured
-  errorHttp, // server-side | network error
-  successful, // payment successfully billed
-  failed, // payment not billed, wrong otp, insufficient funds, etc
-  cancelled, // user clicked on "annuler"
-  expired, // payment timeout, user didn't approve or refuse payment in due time
-  terminated // payment process over
-}
+
+
 
 String paymentMethodText(AdpPaymentMethod method) {
   return method == AdpPaymentMethod.mobile ? "mobile" : "bank";
@@ -2342,188 +2080,25 @@ String paymentMethodText(AdpPaymentMethod method) {
 
 String paymentOperatorText(AdpPaymentOperator op) {
   return op == AdpPaymentOperator.mtn
-      ? "mtn"
+      ? "MTN_CI"
       : op == AdpPaymentOperator.orange
-          ? "om"
-          : "moov";
+      ? "ORANGE_CI"
+      : "Moov_CI";
 }
 
 String _selecteOperatorName(op) {
   return op == AdpPaymentOperator.mtn
       ? "MTN"
       : op == AdpPaymentOperator.orange
-          ? "Orange"
-          : "Moov";
-}
-// enum MobileOperator { Mtn, Orange, Moov }
-// enum BankOperator { Visa, Mastercard }
-
-// *** AdpTransaction
-class AdpTransaction {
-  int amount;
-  String currency = "XOF";
-  String designation;
-  String reference;
-
-  AdpTransaction({
-    @required this.amount,
-    @required this.currency,
-    @required this.designation,
-    @required this.reference,
-  });
+      ? "Orange"
+      : "Moov";
 }
 
-// *** Text Content
-class AdpInfoText {
-  static const mtn =
-      '''Veuillez taper *133# choisir l'option 1 puis l'option 1 pour approuver ou refuser le paiement''';
-  static const moov =
-      '''Pour obtenir votre code d'autorisation Moov Money, merci de taper #155#, choisir l'option
-      8 puis l'option 2. Entrez votre code secret et validez.''';
-  // TODO make this rich text
-  static const orange =
-      '''Pour obtenir votre code d'autorisation Orange Money, merci de taper #144#, choisir l'option 8 puis l'option 2. Entrez votre code secret et validez.''';
-}
 
-// ****** OPERATORS INFOS
 
-class AdpOperator {
-  static const orangePrefixes = [
-    '07',
-    // '08',
-    // '09',
-    // '47',
-    // '48',
-    // '49',
-    // '57',
-    // '58',
-    // '59',
-    // '67',
-    // '68',
-    // '69',
-    // '77',
-    // '78',
-    // '79',
-    // '87',
-    // '88',
-    // '89'
-  ];
-  static const mtnPrefixes = [
-    // '04',
-    '05',
-    // '06',
-    // '44',
-    // '45',
-    // '46',
-    // '55',
-    // '56',
-    // '56',
-    // '64',
-    // '65',
-    // '66',
-    // '74',
-    // '75',
-    // '76',
-    // '84',
-    // '85',
-    // '86'
-  ];
-  static const moovPrefixes = [
-    '01',
-    // '02',
-    // '03',
-    // '40',
-    // '41',
-    // '42',
-    // '43',
-    // '70',
-    // '71',
-    // '72',
-    // '73'
-  ];
-}
 
-// *** CSS
 
-// *** Assets And Styles
-class AdpAsset {
-  static const _cdnUri = "https://api.adjeminpay.net/img/";
-  // static const _cdnUri = "img/";
 
-  static const logo = _cdnUri + "logo.png";
-  // static const logo = "https://adjemin.com/img/logo.png";
-  static const background = _cdnUri + "bg.png";
-  static const mobile_money = _cdnUri + "mobile-money.png";
-  static const mtn = _cdnUri + "op/mtn.webp";
-  static const orange = _cdnUri + "op/orange.webp";
-  static const moov = _cdnUri + "op/flooz.webp";
-  static const bank = _cdnUri + "card.png";
-  static const visa = _cdnUri + "op/visa.webp";
-  static const mastercard = _cdnUri + "op/mastercard.webp";
-  static const check = _cdnUri + "/check.png";
-  static const successful = _cdnUri + "/successful.png";
-  static const failed = _cdnUri + "/failed.png";
-}
 
-class AdpColors {
-  static const Color primary = Color(0xff16518D);
-  static const Color accent = Color(0xff2dc068);
-  static const Color grey = Color(0xffeeeeee);
-  static const Color primary100 = Color(0x33115093);
-  static const Color primary200 = Color(0xFF1B63AC);
-  static const Color border = Color(0xffb4c3d9);
-  static const Color red = Color(0xffdc3545);
-}
 
-class AdpTextStyles {
-  static const white_bold = TextStyle(
-    fontWeight: FontWeight.bold,
-    fontSize: 30,
-    color: Colors.white,
-  );
-  static const white_medium_bold = TextStyle(
-    fontWeight: FontWeight.bold,
-    fontSize: 23,
-    color: Colors.white,
-  );
-  static const white = TextStyle(
-    color: Colors.white,
-  );
-  static const white_semi_bold = TextStyle(
-    fontWeight: FontWeight.bold,
-    // fontSize: 30,
-    color: Colors.white,
-  );
 
-  static const primary_bold = TextStyle(
-    fontWeight: FontWeight.bold,
-    // fontSize: 30,
-    color: AdpColors.primary,
-  );
-  static const primary_bolder = TextStyle(
-    fontWeight: FontWeight.bold,
-    fontSize: 30,
-    color: AdpColors.primary,
-  );
-  static const accent_bold = TextStyle(
-    fontWeight: FontWeight.bold,
-    fontSize: 30,
-    color: AdpColors.accent,
-  );
-  static const error = TextStyle(
-    fontWeight: FontWeight.bold,
-    // fontSize: 30,
-    color: AdpColors.red,
-  );
-  static const error_semi_bold = TextStyle(
-    fontWeight: FontWeight.bold,
-    fontSize: 20,
-    color: AdpColors.red,
-  );
-  static const error_bold = TextStyle(
-    fontWeight: FontWeight.bold,
-    // fontSize: 30,
-    fontSize: 26,
-    color: AdpColors.red,
-  );
-}

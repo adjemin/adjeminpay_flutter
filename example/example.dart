@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../lib/adjeminpay_flutter.dart';
+import 'dart:math' as m;
 
 // This page describes a very basic use of AdjeminPay
 // to finalize an order on a cart screen
@@ -16,25 +17,31 @@ class _ExampleScreenState extends State<ExampleScreen> {
   // To either display a loading spinner or the "Order Now" button
   var _isLoading = false;
 
+  static final String clientId = "41";
+  static final String clientSecret = "Y4R91969G3GYKV1JKvKQaaliK95yluEWKbHKPrfj";
+
+  static String generateUUID() {
+    var rnd = new m.Random.secure();
+
+    var bytes = new List<int>.generate(16, (_) => rnd.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0F) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    var chars = bytes
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join()
+        .toUpperCase();
+
+    return '${chars.substring(0, 8)}-${chars.substring(8, 12)}-'
+        '${chars.substring(12, 16)}-${chars.substring(16, 20)}-${chars.substring(20, 32)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     // The basic configuration of AdjeminPay
     // You need to keep your apiKey and applicationId secret
     // You can store them in a constants.dart or env.dart file
     // They are required for all the operations with the package
-    const Map adpConfig = {
-      // Your apiKey
-      'apiKey': "eyJpdiI6IkpNQ05tWmtGc0FVbWc1VFhFM",
-      // Your applicationId
-      'applicationId': "99f99e",
-      // The notifyUrl is a url for your web backend if you use any
-      // A post request with the {transactionId, status, message}
-      // will be sent to this url when the payment is terminated (successful, failed, cancelled, or if an error occured)
-      // This not required as the package allows you to excute a callback
-      // on paymentTerminated
-      'notifyUrl': "",
-    };
-
     // This functions passes in data (your order/transaction data)
     // to the AdjeminPay() constructor, that will generate a payment gateway
     // where your user will enter their :
@@ -50,7 +57,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
     // - return a Map containing transactionId, status and message
     //        for you to execute any callback or redirection accordingly
 
-    void payWithAdjeminPay(dynamic orderData) async {
+    void payWithAdjeminPay(dynamic orderData, String clientId, String clientSecret) async {
       // paymentResult will yield {transactionId, status, message }
       // once the payment gate is closed by the user
       // ! IMPORTANT : make sure to save the orderData in your database first
@@ -61,32 +68,32 @@ class _ExampleScreenState extends State<ExampleScreen> {
             builder: (context) =>
                 // The AdjeminPay class
                 AdjeminPay(
-              // ! required apiKey
-              apiKey: adpConfig['apiKey'],
-              // ! required applicationId required
-              applicationId: adpConfig['applicationId'],
+              // ! required clientId
+              clientId: clientId,
+              // ! required clientScret
+              clientSecret: clientSecret,
               // ! required transactionId required
               // for you to follow the transaction
               //    or retrieve it later
               //    should be a string < 191 and unique for your application
-              transactionId: "${orderData['transactionId']}",
+              merchantTransactionId: "${orderData['transaction_id']}",
+                  // ! required designation
+                  //   the name the user will see as what they're paying for
+              designation: orderData['designation'],
               // notifyUrl for your web backend
-              notifyUrl: "https://adjeminpay.net/v1/notifyUrl",
+              notificationUrl: "https://adjeminpay.net/v1/notifyUrl",
               // amount: int.parse("${orderData['totalAmount']}"),
               // ! required amount
               //    amount the user is going to pay
               //    should be an int
-              amount: int.parse("${orderData['totalAmount']}"),
+              amount: double.parse("${orderData['total_amount']}"),
               // currency code
               // currently supported currency is XOF
-              currency: "XOF",
-              // ! required designation
-              //   the name the user will see as what they're paying for
-
-              designation: orderData['designation'],
+              currencyCode: orderData['currency_code'],
               // designation: widget.element.title,
               // the name of your user
-              payerName: orderData['clientName'],
+              buyerName: orderData['client_name'], //optional
+              buyerReference: orderData['client_phone'], //optional
             ),
           ));
 
@@ -135,19 +142,17 @@ class _ExampleScreenState extends State<ExampleScreen> {
         return;
       }
       // Callback on initialisation error
-      if (paymentResult['status'] == "ERROR_CONFIG") {
+      if (paymentResult['status'] == "INVALID_PARAMS") {
         print("<<< AdjeminPay Init error");
         // You didn't specify a required field
-        // or your apiKey or applicationId are not valid
         print(paymentResult);
         return;
       }
-      // Callback in case
-      if (paymentResult['status'] == "ERROR") {
-        print("<<< AdjeminPay Error");
-        // You specified :
-        // - a transactionId that has already been used
-        // -
+
+      if (paymentResult['status'] == "INVALID_CREDENTIALS") {
+        print("<<< AdjeminPay Init error");
+        // You didn't specify a required field
+        // or your clientId or clientSecret are not valid
         print(paymentResult);
         return;
       }
@@ -161,29 +166,30 @@ class _ExampleScreenState extends State<ExampleScreen> {
     // recommanded to use your Order/Cart class
     Map<String, dynamic> myOrder = {
       // ! required transactionId or orderId
-      'transactionId': "UniqueTransactionId" + DateTime.now().toString(),
+      'transaction_id': generateUUID(),
       // ! required total amount
-      'totalAmount': 1000,
+      'total_amount': 1000,
       // optional your orderItems data
       'items': [
         {
           'id': '1',
-          'productId': 'prod1',
+          'product_id': 'prod1',
           'price': 100,
           'quantity': 1,
           'title': 'Product 1 title',
         },
         {
           'id': '2',
-          'productId': 'prod9',
+          'product_id': 'prod9',
           'price': 300,
           'quantity': 3,
           'title': 'Product 9 title',
         },
       ],
-      'currency': "XOF",
+      'currency_code': "XOF",
       'designation': "Order Title",
-      'payerName': "ClientName",
+      'client_name': "Ange Bagui",
+      'client_phone':"2250556888385"
     };
 
     // Basic Cart Screen for checkout from Academind by Maximilian Schwarzmüller
@@ -209,7 +215,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
                   Spacer(),
                   Chip(
                     label: Text(
-                      '\$${myOrder['totalAmount']?.toStringAsFixed(2)}',
+                      '\$${myOrder['total_amount']?.toStringAsFixed(2)}',
                       style: TextStyle(
                         color: Theme.of(context).primaryTextTheme.title.color,
                       ),
@@ -220,8 +226,8 @@ class _ExampleScreenState extends State<ExampleScreen> {
                     child: _isLoading
                         ? CircularProgressIndicator()
                         : Text('ORDER NOW'),
-                    onPressed: (myOrder['totalAmount'] == null ||
-                            myOrder['totalAmount'] <= 0 ||
+                    onPressed: (myOrder['total_amount'] == null ||
+                            myOrder['total_amount'] <= 0 ||
                             _isLoading)
                         ? null
                         : () {
@@ -230,7 +236,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
                             // your database where you create a unique transaction Id
                             // for example :  await storeOrderData(myOrder);
                             // then you call the payment function
-                            payWithAdjeminPay(myOrder);
+                            payWithAdjeminPay(myOrder, clientId,clientSecret);
                           },
                     textColor: Theme.of(context).primaryColor,
                   )
@@ -244,7 +250,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
               itemCount: myOrder['items'].length,
               itemBuilder: (ctx, i) => CartItem(
                 myOrder['items'][i]['id'],
-                myOrder['items'][i]['productId'],
+                myOrder['items'][i]['product_id'],
                 myOrder['items'][i]['price'],
                 myOrder['items'][i]['quantity'],
                 myOrder['items'][i]['title'],

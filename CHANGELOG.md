@@ -1,5 +1,9 @@
 # ChangeLog AdjeminPay Flutter
 
+## [0.1.7] - 12/06/2021
+* AdjeminPay APis V2  integrated
+* Bug fixed
+
 ## [0.1.6] - 01/30/2021
 
 * 10 digits validation added

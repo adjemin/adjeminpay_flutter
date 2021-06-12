@@ -1,23 +1,32 @@
-import 'package:adjeminpay_flutter/model/AccessTokenResult.dart';
-import 'package:adjeminpay_flutter/model/PaymentResult.dart';
+import 'package:adjeminpay_flutter/models/AccessTokenResult.dart';
+import 'package:adjeminpay_flutter/models/Application.dart';
+import 'package:adjeminpay_flutter/models/TransactionStatus.dart';
 
 abstract class AdjeminPayService{
 
-
   Future<AccessTokenResult> getAccessToken(String clientId, String clientSecret);
 
-  Future<PaymentResult> doTransactionOperation(
+  Future<Application> getApplication(String clientId, String clientSecret);
+
+  Future<TransactionStatus> doTransactionOperation(
       {
-        double amount,
-        String operator,
-        String clientReference,
-        String currencyCode,
-        String designation,
-        String notifyUrl,
         String clientId,
-        int orangeOtp,
+        String clientSecret,
+        String merchantTransactionId,
+        String designation,
+        String currencyCode,
         String buyerName,
-        String transactionId
+        String buyerReference,
+        String notificationUrl,
+        String paymentMethodReference,
+        double amount,
+        int otp,
       });
+
+  Future<TransactionStatus> getPaymentStatus(
+      String clientId,
+      String clientSecret,
+      String transactionReference);
+
 
 }

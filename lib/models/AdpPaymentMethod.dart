@@ -1,0 +1,1 @@
+enum AdpPaymentMethod { mobile, bank }
