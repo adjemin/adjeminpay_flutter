@@ -81,12 +81,12 @@ class _ExampleScreenState extends State<ExampleScreen> {
                   //   the name the user will see as what they're paying for
               designation: orderData['designation'],
               // notifyUrl for your web backend
-              notificationUrl: "https://adjeminpay.net/v1/notifyUrl",
+              notificationUrl: "https://api.exemple.com/epayment/callback",
               // amount: int.parse("${orderData['totalAmount']}"),
               // ! required amount
               //    amount the user is going to pay
               //    should be an int
-              amount: double.parse("${orderData['total_amount']}"),
+              amount: int.parse("${orderData['total_amount']}"),
               // currency code
               // currently supported currency is XOF
               currencyCode: orderData['currency_code'],

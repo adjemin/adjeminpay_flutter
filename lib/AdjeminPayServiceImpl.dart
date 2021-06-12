@@ -119,7 +119,7 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
     String buyerReference,
     String notificationUrl,
     String paymentMethodReference,
-    double amount,
+    int amount,
     int otp}) async{
 
     AccessTokenResult accessTokenResult = await this.getAccessToken(clientId, clientSecret);
@@ -135,7 +135,7 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
         body: {
           "merchant_transaction_id": merchantTransactionId,
           "designation": designation,
-          "buyer_name":buyerName,
+          "buyer_name":buyerName??"",
           "buyer_reference":buyerReference,
           "notification_url":notificationUrl,
           "payment_method_reference":paymentMethodReference,
@@ -220,7 +220,6 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
 
         if(json.containsKey('message')){
           message = json['message'] as String;
-
         }
 
         if(json.containsKey('code')){

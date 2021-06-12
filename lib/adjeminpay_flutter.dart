@@ -26,7 +26,7 @@ class AdjeminPay extends StatefulWidget {
   final String buyerName;
   final String buyerReference;
   final String notificationUrl;
-  final double amount;
+  final int amount;
   final String currencyCode;
   final String locale;
   final Function callback;
@@ -510,8 +510,11 @@ class _AdjeminPayState extends State<AdjeminPay>
 
   void loadPage() async {
     if (widget.clientId == null) {
-      exitWithError(
-          {'code': 401, 'status': "INVALID_PARAMS", 'message': "Missing clientId"});
+      exitWithError({
+        'code': 401,
+        'status': "INVALID_PARAMS",
+        'message': "Missing clientId"
+      });
       return;
     }
     if (widget.clientSecret == null) {

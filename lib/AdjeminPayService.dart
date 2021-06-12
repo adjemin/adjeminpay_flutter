@@ -19,7 +19,7 @@ abstract class AdjeminPayService{
         String buyerReference,
         String notificationUrl,
         String paymentMethodReference,
-        double amount,
+        int amount,
         int otp,
       });
 
