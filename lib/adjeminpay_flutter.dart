@@ -275,13 +275,15 @@ class _AdjeminPayState extends State<AdjeminPay>
 
 
               // Launch confirmation wait
-              setState(() {
+              if(mounted){
+                setState(() {
                 _paymentState = AdpPaymentState.waiting;
                 _paymentResult = {
                   'status': StatusCode.PENDING,
                   'message': "Le paiement en attente !"
                 };
               });
+              }
               _activateReload();
               _activateAbort(10);
 
@@ -324,7 +326,9 @@ class _AdjeminPayState extends State<AdjeminPay>
                         'message': "Paiement réussi !"
                       };
                       print("===> going notify success");
-                      setState(() {});
+                      if(mounted){
+                        setState(() {});
+                      }
 
                     }else if (finalMtnResponse.status == StatusCode.EXPIRED) {
                       // check for payment timeout
@@ -338,7 +342,9 @@ class _AdjeminPayState extends State<AdjeminPay>
                           'message': "Le paiement a expiré"
                         };
                         print("===> going notify expired");
-                        setState(() {});
+                        if(mounted){
+                          setState(() {});
+                        }
 
                       }
                     }else if (finalMtnResponse.status == StatusCode.CANCELLED) {
@@ -350,7 +356,9 @@ class _AdjeminPayState extends State<AdjeminPay>
                           'status': finalMtnResponse.status?? StatusCode.CANCELLED,
                           'message': "Le paiement a été refusé"
                         };
-                        setState(() {});
+                        if(mounted){
+                          setState(() {});
+                        }
                     }else if (transactionStatus.status == StatusCode.FAILED) {
                       _paymentState = AdpPaymentState.failed;
                       _paymentResult = {
@@ -359,7 +367,9 @@ class _AdjeminPayState extends State<AdjeminPay>
                         'message': "Le paiement a échoué !"
                       };
                       print("===> going notify failed");
-                      setState(() {});
+                      if(mounted){
+                          setState(() {});
+                      }
 
                       print("<=== finished notify failed");
                     }else{
@@ -395,7 +405,8 @@ class _AdjeminPayState extends State<AdjeminPay>
             } else if (transactionStatus.status == StatusCode.FAILED) {
               print("Payment Failed...");
               print(transactionStatus.message);
-              setState(() {
+              if(mounted){
+                setState(() {
                 _paymentState = AdpPaymentState.failed;
                 _paymentResult = {
                   'code': transactionStatus.code?? StatusCode.codes[StatusCode.FAILED],
@@ -403,6 +414,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                   'message': "Le paiement a échoué !"
                 };
               });
+              }
 
               return;
             }
