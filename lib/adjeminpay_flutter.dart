@@ -61,8 +61,6 @@ class _AdjeminPayState extends State<AdjeminPay>
   // final String merchantIconUrl = "https://adjemin.com/img/logo.png";
   final String adpIconUrl = "https://api.adjeminpay.net/img/logo.png";
 
-  // *** Network assets
-  final imageLogo = Image.network(AdpAsset.logo);
   var imageMerchantlogo;
   var imageBackground;
   var imageMobileMoney;
@@ -145,10 +143,6 @@ class _AdjeminPayState extends State<AdjeminPay>
   };
 
   bool _isShowingDialog = false;
-  // bool _isLoading = false;
-  // bool _isPaymentPending = false;
-  // bool _isPaymentSuccessful = false;
-  // bool _isPaymentFail = false;
 
   void _makePayment() async {
     print("=== ADP $_paymentState");
@@ -207,11 +201,10 @@ class _AdjeminPayState extends State<AdjeminPay>
             print(transactionStatus.toJson());
 
             if (transactionStatus.status == StatusCode.SUCCESS) {
-              //modal("Paiement réussi !", "Transaction terminée", "Veuillez patienter");
               setState(() {
                 _paymentState = AdpPaymentState.successful;
                 _paymentResult = {
-                  'code': transactionStatus.code ?? 1,
+                  'code': transactionStatus.code ?? StatusCode.codes[StatusCode.SUCCESS],
                   'status': transactionStatus.status ?? StatusCode.SUCCESS,
                   'message': "Paiement réussi !"
                 };
@@ -222,8 +215,8 @@ class _AdjeminPayState extends State<AdjeminPay>
               setState(() {
                 _paymentState = AdpPaymentState.failed;
                 _paymentResult = {
-                  'code': transactionStatus.code,
-                  'status': transactionStatus.status,
+                  'code': transactionStatus.code??StatusCode.codes[StatusCode.EXPIRED],
+                  'status': transactionStatus.status??StatusCode.EXPIRED,
                   'message': "Le code a expiré !"
                 };
               });
@@ -232,8 +225,8 @@ class _AdjeminPayState extends State<AdjeminPay>
               setState(() {
                 _paymentState = AdpPaymentState.failed;
                 _paymentResult = {
-                  'code': transactionStatus.code,
-                  'status': transactionStatus.status,
+                  'code': transactionStatus.code??StatusCode.codes[StatusCode.FAILED],
+                  'status': transactionStatus.status??StatusCode.FAILED,
                   'message': "Le paiement a échoué !"
                 };
               });
@@ -368,7 +361,11 @@ class _AdjeminPayState extends State<AdjeminPay>
               print(transactionStatus.message);
               setState(() {
                 _paymentState = AdpPaymentState.failed;
-                _paymentResult = transactionStatus.toJson();
+                _paymentResult = {
+                  'code': transactionStatus.code?? StatusCode.codes[StatusCode.FAILED],
+                  'status': transactionStatus.status?? StatusCode.FAILED,
+                  'message': "Le paiement a échoué !"
+                };
               });
 
               return;
@@ -511,20 +508,23 @@ class _AdjeminPayState extends State<AdjeminPay>
   void loadPage() async {
     if (widget.clientId == null) {
       exitWithError({
-        'code': 401,
-        'status': "INVALID_PARAMS",
+        'code': StatusCode.codes[StatusCode.INVALID_PARAMS],
+        'status': StatusCode.INVALID_PARAMS,
         'message': "Missing clientId"
       });
       return;
     }
     if (widget.clientSecret == null) {
       exitWithError({
-        'code': 401,
-        'status': "INVALID_PARAMS",
+        'code': StatusCode.codes[StatusCode.INVALID_PARAMS],
+        'status': StatusCode.INVALID_PARAMS,
         'message': "Missing clientSecret"
       });
       return;
     }
+
+    // *** Network assets
+    final imageLogo = Image.network(AdpAsset.logo);
 
     await precacheImage(imageLogo.image, context);
     // **** Check auth
@@ -532,10 +532,12 @@ class _AdjeminPayState extends State<AdjeminPay>
     _iz();
     try{
       var application = await new AdjeminPayServiceImpl().getApplication(widget.clientId, widget.clientSecret);
+
+      print('Application ${application.toJson()}');
       _iz();
       if(application != null){
 
-        String _imageMerchantlogo = application.logo;
+        String _imageMerchantlogo = "https://merchant.adjeminpay.net/storage/${application.logo}";
 
         // **** Setup and Preload images
         imageMerchantlogo = Image.network(_imageMerchantlogo);
@@ -591,9 +593,9 @@ class _AdjeminPayState extends State<AdjeminPay>
 
       }else{
         _paymentResult = {
-          'code': 401,
-          'status': "INVALID_PARAMS",
-          'message': "Error found"
+          'code': StatusCode.codes[StatusCode.INVALID_PARAMS],
+          'status': StatusCode.INVALID_PARAMS,
+          'message': StatusCode.messages[StatusCode.INVALID_PARAMS]
         };
       }
     }catch(error){
@@ -602,26 +604,26 @@ class _AdjeminPayState extends State<AdjeminPay>
 
       if(error is AdjeminPayAuthException){
         _paymentResult = {
-          'code': 401,
-          'status': "INVALID_CREDENTIALS",
+          'code': StatusCode.codes[StatusCode.INVALID_CREDENTIALS],
+          'status': StatusCode.INVALID_CREDENTIALS,
           'message': error.msg
         };
       }else if(error is AdjeminPayException){
 
         _paymentResult = {
-          'code': 401,
-          'status': "INVALID_PARAMS",
+          'code': StatusCode.codes[StatusCode.OPERATION_ERROR],
+          'status': StatusCode.OPERATION_ERROR,
           'message': error.msg
         };
       }else{
         _paymentResult = {
-          'code': 401,
-          'status': "INVALID_PARAMS",
-          'message': "Error found"
+          'code': StatusCode.codes[StatusCode.OPERATION_ERROR],
+          'status': StatusCode.OPERATION_ERROR,
+          'message': error.msg
         };
       }
 
-      print(">>>>> ADP INVALID_PARAMS");
+      print(">>>>> ADP ${_paymentResult['status']}");
       print("Error $error");
 
       Navigator.of(context).pop(_paymentResult);
@@ -653,7 +655,7 @@ class _AdjeminPayState extends State<AdjeminPay>
         body: SafeArea(
           child: _isPageLoading
               ? Center(
-            child: Container(
+               child: Container(
               // height: 400,
               padding: EdgeInsets.all(20),
               child: ALoader(
@@ -664,11 +666,10 @@ class _AdjeminPayState extends State<AdjeminPay>
                 textSpacing: 20,
                 textPadding: EdgeInsets.only(left: 40),
                 textStyle: AdpTextStyles.primary_bolder,
-
                 isTextCentered: false,
               ),
             ),
-          )
+                )
               : buildPage(),
         ),
       ),

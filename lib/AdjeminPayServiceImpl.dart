@@ -59,7 +59,7 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
       String clientId,
       String clientSecret,
       String transactionReference)async {
-    AccessTokenResult accessTokenResult = await this.getAccessToken(clientId, clientSecret);
+    final AccessTokenResult accessTokenResult = await this.getAccessToken(clientId, clientSecret);
 
     if(accessTokenResult == null){
       final message =  'The requested service needs credentials, but the ones provided were invalid.';
@@ -207,10 +207,24 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
         }
     );
 
+    print('URL $url');
+    print('BODY ${response.body}');
+
     if(response.statusCode == 200){
       final Map json = jsonDecode(response.body);
-      final Application result = Application.fromJson(json);
-      return result;
+      if(json.containsKey('data')){
+        Map jsonData = json['data'] as Map;
+        final Application result = Application.fromJson(jsonData);
+        return result;
+      }else{
+        if(json.containsKey('message')){
+          var code = StatusCode.codes[StatusCode.OPERATION_ERROR];
+          var status = StatusCode.OPERATION_ERROR;
+          final message = json['message'] as String;
+          throw new AdjeminPayException(message, response.statusCode, code,status);
+        }
+      }
+
     }else{
       var message = StatusCode.messages[StatusCode.OPERATION_ERROR];
       var code = StatusCode.codes[StatusCode.OPERATION_ERROR];
@@ -231,7 +245,7 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
         }
 
       }else{
-        message  = "Payment has failed";
+        message  = "An error has occurred";
       }
 
       throw new AdjeminPayException(message, response.statusCode, code,status);
