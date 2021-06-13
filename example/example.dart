@@ -166,7 +166,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
     // recommanded to use your Order/Cart class
     Map<String, dynamic> myOrder = {
       // ! required transactionId or orderId
-      'transaction_id': generateUUID(),
+      'transaction_id': generateUUID().toLowerCase(),
       // ! required total amount
       'total_amount': 1000,
       // optional your orderItems data

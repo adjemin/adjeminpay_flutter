@@ -12,12 +12,11 @@ class Transaction {
   int userId;
   int applicationId;
   String currencyCode;
-  String amount;
-  String type;
+  int amount;
+  int type;
   int paymentMethodId;
   bool isWaiting;
   bool isCanceled;
-  String cardProviderId;
   bool isApprouved;
   String canceledAt;
   String approuvedAt;
@@ -32,7 +31,6 @@ class Transaction {
   String notifUrl;
   String errorMetaTransaction;
   String buyerReference;
-  String providerPaymentId;
   String orangePaymentUrl;
   String orangePayToken;
   String buyerName;
@@ -40,8 +38,6 @@ class Transaction {
   String phoneNumber;
   bool isInitiated;
   bool isCompleted;
-  String returnUrl;
-  String cancelUrl;
 
   Transaction(
       {this.id,
@@ -54,7 +50,6 @@ class Transaction {
         this.paymentMethodId,
         this.isWaiting,
         this.isCanceled,
-        this.cardProviderId,
         this.isApprouved,
         this.canceledAt,
         this.approuvedAt,
@@ -69,53 +64,47 @@ class Transaction {
         this.notifUrl,
         this.errorMetaTransaction,
         this.buyerReference,
-        this.providerPaymentId,
         this.orangePaymentUrl,
         this.orangePayToken,
         this.buyerName,
         this.paymentMethodCode,
         this.phoneNumber,
         this.isInitiated,
-        this.isCompleted,
-        this.returnUrl,
-        this.cancelUrl});
+        this.isCompleted
+      });
 
   Transaction.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    merchantId = json['merchant_id'];
-    userId = json['user_id'];
-    applicationId = json['application_id'];
+    id = json['id'] as int;
+    merchantId = json['merchant_id']  as int;
+    userId = json['user_id'] as int;
+    applicationId = json['application_id'] as int;
     currencyCode = json['currency_code'];
-    amount = json['amount'];
-    type = json['type'];
-    paymentMethodId = json['payment_method_id'];
-    isWaiting = json['is_waiting'];
-    isCanceled = json['is_canceled'];
-    cardProviderId = json['card_provider_id'];
-    isApprouved = json['is_approuved'];
-    canceledAt = json['canceled_at'];
-    approuvedAt = json['approuved_at'];
-    status = json['status'];
-    deletedAt = json['deleted_at'];
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
-    reference = json['reference'];
-    designation = json['designation'];
-    clientReference = json['client_reference'];
-    reason = json['reason'];
-    notifUrl = json['notif_url'];
-    errorMetaTransaction = json['error_meta_data'];
-    buyerReference = json['buyer_reference'];
-    providerPaymentId = json['provider_payment_id'];
-    orangePaymentUrl = json['orange_payment_url'];
-    orangePayToken = json['orange_pay_token'];
-    buyerName = json['buyer_name'];
-    paymentMethodCode = json['payment_method_code'];
-    phoneNumber = json['phone_number'];
-    isInitiated = json['is_initiated'];
-    isCompleted = json['is_completed'];
-    returnUrl = json['return_url'];
-    cancelUrl = json['cancel_url'];
+    amount = json['amount'] as int;
+    type = json['type'] as int;
+    isWaiting = json['is_waiting'] as bool;
+    isCanceled = json['is_canceled'] as bool;
+    isApprouved = json['is_approuved'] as bool;
+    canceledAt = json['canceled_at'] as String;
+    approuvedAt = json['approuved_at'] as String;
+    status = json['status'] as String;
+    deletedAt = json['deleted_at'] as String;
+    createdAt = json['created_at'] as String;
+    updatedAt = json['updated_at'] as String;
+    reference = json['reference'] as String;
+    designation = json['designation'] as String;
+    clientReference = json['client_reference'] as String;
+    reason = json['reason'] as String;
+    notifUrl = json['notif_url'] as String;
+    errorMetaTransaction = json['error_meta_data'] as String;
+    buyerReference = json['buyer_reference'] as String;
+    buyerName = json['buyer_name'] as String;
+    orangePaymentUrl = json['orange_payment_url'] as String;
+    orangePayToken = json['orange_pay_token'] as String;
+    paymentMethodId = json['payment_method_id'] as int;
+    paymentMethodCode = json['payment_method_code'] as String;
+    phoneNumber = json['phone_number'] as String;
+    isInitiated = json['is_initiated'] as bool;
+    isCompleted = json['is_completed'] as bool;
   }
 
   Map<String, dynamic> toJson() {
@@ -127,10 +116,9 @@ class Transaction {
     data['currency_code'] = this.currencyCode;
     data['amount'] = this.amount;
     data['type'] = this.type;
-    data['payment_method_id'] = this.paymentMethodId;
+
     data['is_waiting'] = this.isWaiting;
     data['is_canceled'] = this.isCanceled;
-    data['card_provider_id'] = this.cardProviderId;
     data['is_approuved'] = this.isApprouved;
     data['canceled_at'] = this.canceledAt;
     data['approuved_at'] = this.approuvedAt;
@@ -144,17 +132,15 @@ class Transaction {
     data['reason'] = this.reason;
     data['notif_url'] = this.notifUrl;
     data['error_meta_data'] = this.errorMetaTransaction;
+    data['buyer_name'] = this.buyerName;
     data['buyer_reference'] = this.buyerReference;
-    data['provider_payment_id'] = this.providerPaymentId;
     data['orange_payment_url'] = this.orangePaymentUrl;
     data['orange_pay_token'] = this.orangePayToken;
-    data['buyer_name'] = this.buyerName;
+    data['payment_method_id'] = this.paymentMethodId;
     data['payment_method_code'] = this.paymentMethodCode;
     data['phone_number'] = this.phoneNumber;
     data['is_initiated'] = this.isInitiated;
     data['is_completed'] = this.isCompleted;
-    data['return_url'] = this.returnUrl;
-    data['cancel_url'] = this.cancelUrl;
     return data;
   }
 }

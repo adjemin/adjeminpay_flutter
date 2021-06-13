@@ -22,7 +22,7 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
     final String url = "$BASE_URL/oauth/token";
     final http.Response response = await http.post(
         Uri.parse(url),
-        body: {
+        body: <String, String>{
           "grant_type": "client_credentials",
           "client_id": clientId,
           "client_secret":clientSecret
@@ -132,7 +132,7 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
     final String url = "$API_URL/transactions";
     final http.Response response = await http.post(
         Uri.parse(url),
-        body: {
+        body: <String, String>{
           "merchant_transaction_id": merchantTransactionId,
           "designation": designation,
           "buyer_name":buyerName??"",
@@ -141,7 +141,7 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
           "payment_method_reference":paymentMethodReference,
           "amount":"$amount",
           "currency_code":currencyCode,
-          "otp":otp??""
+          "otp":"$otp"??""
         },
         headers: {
           'Authorization' : 'Bearer ${accessTokenResult.accessToken}',

@@ -552,7 +552,6 @@ class _AdjeminPayState extends State<AdjeminPay>
         imageCheck = Image.network(AdpAsset.check);
         imageSuccessful = Image.network(AdpAsset.successful);
         imageFailed = Image.network(AdpAsset.failed);
-        //
 
         _iz();
         await precacheImage(imageMerchantlogo.image, context);
