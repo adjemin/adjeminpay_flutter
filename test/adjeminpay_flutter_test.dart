@@ -43,8 +43,8 @@ dynamic getLogo(){
 }
 
 Future<dynamic> getMerchantLogo() async{
-  final String clientId = "41";
-  final String clientSecret = "Y4R91969G3GYKV1JKvKQaaliK95yluEWKbHKPrfj";
+  final String clientId = "";
+  final String clientSecret = "";
 
   final application = await new AdjeminPayServiceImpl().getApplication(clientId, clientSecret);
   // *** Network assets

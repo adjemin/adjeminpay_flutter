@@ -6,8 +6,8 @@ import 'package:adjeminpay_flutter/models/TransactionStatus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:math' as m;
 
-final String clientId = "41";
-final String clientSecret = "Y4R91969G3GYKV1JKvKQaaliK95yluEWKbHKPrfj";
+final String clientId = "";
+final String clientSecret = "";
 
 void main(){
   
