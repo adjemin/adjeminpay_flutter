@@ -205,13 +205,13 @@ class _AdjeminPayState extends State<AdjeminPay>
               clientId:"41",
               clientSecret:"Y4R91969G3GYKV1JKvKQaaliK95yluEWKbHKPrfj",
               merchantTransactionId: widget.merchantTransactionId,
-              designation: "Commande de produit",
+              designation: widget.designation,
               currencyCode: "XOF",
               buyerName:"Ange Bagui",
               buyerReference:"2250556888385",
               notificationUrl: "https://api.exemple.com/epayment/callback",
               paymentMethodReference: "MTN_CI",
-              amount: 10,
+              amount: widget.amount,
               otp: -1
       );
 
@@ -232,7 +232,6 @@ class _AdjeminPayState extends State<AdjeminPay>
           if(PaymentMethod.isORANGE(transactionStatus.data.paymentMethodCode)){
 
             print(">>>>>> Orange Response");
-            print(transactionStatus.toJson());
 
             if (transactionStatus.status == StatusCode.SUCCESS) {
               setState(() {
@@ -272,7 +271,6 @@ class _AdjeminPayState extends State<AdjeminPay>
 
             if (transactionStatus.status == StatusCode.PENDING) {
               print("Payment Pending...");
-
 
               // Launch confirmation wait
               if(mounted){
@@ -601,7 +599,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     try{
       var application = await new AdjeminPayServiceImpl().getApplication(widget.clientId, widget.clientSecret);
 
-      print('Application ${application.toJson()}');
+   
       _iz();
       if(application != null){
 
