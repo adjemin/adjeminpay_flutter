@@ -188,7 +188,7 @@ class _AdjeminPayState extends State<AdjeminPay>
 
     try{
 
-      final TransactionStatus transactionStatus = await new AdjeminPayServiceImpl().doTransactionOperation(
+      /*final TransactionStatus transactionStatus = await new AdjeminPayServiceImpl().doTransactionOperation(
           clientId: widget.clientId,
           clientSecret: widget.clientSecret,
           merchantTransactionId: widget.merchantTransactionId,
@@ -199,6 +199,20 @@ class _AdjeminPayState extends State<AdjeminPay>
           buyerReference: '225'+_clientPhoneController.text,
           otp: _selectedMethod == AdpPaymentMethod.mobile && PaymentMethod.isORANGE(paymentOperatorText(_selectedOperator))?(_clientOrangeOtpController.text.trim().isNotEmpty?int.parse(_clientOrangeOtpController.text):-1):-1,
           paymentMethodReference: paymentOperatorText(_selectedOperator)
+      );*/
+
+      final TransactionStatus transactionStatus = await new AdjeminPayServiceImpl().doTransactionOperation(
+              clientId:"41",
+              clientSecret:"Y4R91969G3GYKV1JKvKQaaliK95yluEWKbHKPrfj",
+              merchantTransactionId: widget.merchantTransactionId,
+              designation: "Commande de produit",
+              currencyCode: "XOF",
+              buyerName:"Ange Bagui",
+              buyerReference:"2250556888385",
+              notificationUrl: "https://api.exemple.com/epayment/callback",
+              paymentMethodReference: "MTN_CI",
+              amount: 10,
+              otp: -1
       );
 
       print(">>>>>>>>>>>>>>>>> Response Initiated 200 >>>>>>>>>>>>>>>>>>>>>");
