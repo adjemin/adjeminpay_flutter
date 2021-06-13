@@ -1,10 +1,7 @@
-
 import 'package:adjeminpay_flutter/AdjeminPayServiceImpl.dart';
 import 'package:adjeminpay_flutter/util/AdpAsset.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'AdjeminPayServiceImplTest.dart';
 
 void main() {
 

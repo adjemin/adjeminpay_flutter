@@ -27,7 +27,7 @@ void main(){
     final actual = await new AdjeminPayServiceImpl().doTransactionOperation(
         clientId:clientId,
         clientSecret:clientSecret,
-        merchantTransactionId: generateUUID().toLowerCase(),
+        merchantTransactionId: generateUUID(),
         designation: "Commande de produit",
         currencyCode: "XOF",
         buyerName:"Ange Bagui",
