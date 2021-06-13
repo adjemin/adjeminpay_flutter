@@ -85,7 +85,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   // String _transactionId;
 
   TextEditingController _clientNameController = TextEditingController();
-  TextEditingController _clientPhoneController = TextEditingController(text:"05568888385");
+  TextEditingController _clientPhoneController = TextEditingController(text:"0556888385");
   TextEditingController _clientOrangeOtpController = TextEditingController();
 
   // final _adpForm = GlobalKey<FormState>();
