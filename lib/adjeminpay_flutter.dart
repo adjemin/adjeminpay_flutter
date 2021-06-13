@@ -451,9 +451,11 @@ class _AdjeminPayState extends State<AdjeminPay>
               'message': "La requete de paiement a échoué",
             };
 
-            setState(() {
+            if(mounted){
+              setState(() {
 
-            });
+              });
+            }
 
             return;
           }else if(PaymentMethod.isORANGE(paymentOperatorText(_selectedOperator))){
@@ -464,9 +466,11 @@ class _AdjeminPayState extends State<AdjeminPay>
               'message': "La requete de paiement a échoué",
             };
 
-            setState(() {
+            if(mounted){
+              setState(() {
 
-            });
+              });
+            }
 
             return;
           }else{
@@ -483,7 +487,11 @@ class _AdjeminPayState extends State<AdjeminPay>
           'status': "ERROR_HTTP",
           'message': "Vérifiez votre connexion internet !",
         };
-        setState(() {});
+          if(mounted){
+              setState(() {
+
+              });
+          }
         return;
 
       }else{
@@ -493,7 +501,11 @@ class _AdjeminPayState extends State<AdjeminPay>
           'status': StatusCode.FAILED,
           'message': "La requete de paiement a échoué",
         };
-        setState(() {});
+          if(mounted){
+              setState(() {
+
+              });
+          }
         return;
       }
 
