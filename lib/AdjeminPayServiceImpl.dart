@@ -152,9 +152,9 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
 
     print("waiting for httpResponse !");
     print('============ Response Initiate Payment ==========');
-    print(response.statusCode);
+    print("STATUS CODE: ${response.statusCode}");
     print('============ Response Initiate Payment status ==========');
-
+    print("BODY: ${response.body}");
     print(response.body);
 
     if(response.statusCode == 200){

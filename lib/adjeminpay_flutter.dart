@@ -203,7 +203,7 @@ class _AdjeminPayState extends State<AdjeminPay>
 
       print(">>>>>>>>>>>>>>>>> Response Initiated 200 >>>>>>>>>>>>>>>>>>>>>");
 
-      print("${transactionStatus}");
+      print("${transactionStatus.toJson()}");
       print("${transactionStatus.data}");
       if(mounted){
         setState(() {
@@ -211,7 +211,7 @@ class _AdjeminPayState extends State<AdjeminPay>
         });
       }
 
-      /*
+      
       if(transactionStatus != null && transactionStatus.data != null){
 
         if(PaymentMethod.isMobilePayment(transactionStatus.data.paymentMethodCode)){
@@ -400,7 +400,7 @@ class _AdjeminPayState extends State<AdjeminPay>
           // TODO Other payment method type
         }
 
-      }*/
+      }
 
 
 
