@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:adjeminpay_flutter/AdjeminPayServiceImpl.dart';
 import 'package:adjeminpay_flutter/exceptions/AdjeminPayAuthException.dart';
 import 'package:adjeminpay_flutter/exceptions/AdjeminPayException.dart';
@@ -84,7 +85,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   // String _transactionId;
 
   TextEditingController _clientNameController = TextEditingController();
-  TextEditingController _clientPhoneController = TextEditingController();
+  TextEditingController _clientPhoneController = TextEditingController(text:"05568888385");
   TextEditingController _clientOrangeOtpController = TextEditingController();
 
   // final _adpForm = GlobalKey<FormState>();
@@ -171,6 +172,19 @@ class _AdjeminPayState extends State<AdjeminPay>
     print("body set !");
 
     print(">> ADP $_paymentState");
+    final params = <String, dynamic>{
+      "clientId": widget.clientId,
+      "clientSecret": widget.clientSecret,
+      "merchantTransactionId": widget.merchantTransactionId,
+      "designation": widget.designation,
+      "amount": widget.amount,
+      "currencyCode": widget.currencyCode,
+      "buyerName": _clientNameController.text,
+      "buyerReference": '225'+_clientPhoneController.text,
+      "otp": _selectedMethod == AdpPaymentMethod.mobile && PaymentMethod.isORANGE(paymentOperatorText(_selectedOperator))?(_clientOrangeOtpController.text.trim().isNotEmpty?int.parse(_clientOrangeOtpController.text):-1):-1,
+      "paymentMethodReference": paymentOperatorText(_selectedOperator)
+    };
+    print(">> PARAMS $params");
 
     try{
 
@@ -181,18 +195,24 @@ class _AdjeminPayState extends State<AdjeminPay>
           designation: widget.designation,
           amount: widget.amount,
           currencyCode: widget.currencyCode,
-          buyerName: _clientNameController.text.trim(),
-          buyerReference: '225'+_clientPhoneController.text.trim(),
-          otp: _clientOrangeOtpController.text.trim().isNotEmpty?int.parse(_clientOrangeOtpController.text):-1,
+          buyerName: _clientNameController.text,
+          buyerReference: '225'+_clientPhoneController.text,
+          otp: _selectedMethod == AdpPaymentMethod.mobile && PaymentMethod.isORANGE(paymentOperatorText(_selectedOperator))?(_clientOrangeOtpController.text.trim().isNotEmpty?int.parse(_clientOrangeOtpController.text):-1):-1,
           paymentMethodReference: paymentOperatorText(_selectedOperator)
       );
 
       print(">>>>>>>>>>>>>>>>> Response Initiated 200 >>>>>>>>>>>>>>>>>>>>>");
-      setState(() {
-        _paymentState = AdpPaymentState.pending;
-      });
 
-      if(transactionStatus.data != null){
+      print("${transactionStatus}");
+      print("${transactionStatus.data}");
+      if(mounted){
+        setState(() {
+          _paymentState = AdpPaymentState.pending;
+        });
+      }
+
+      /*
+      if(transactionStatus != null && transactionStatus.data != null){
 
         if(PaymentMethod.isMobilePayment(transactionStatus.data.paymentMethodCode)){
           if(PaymentMethod.isORANGE(transactionStatus.data.paymentMethodCode)){
@@ -238,13 +258,15 @@ class _AdjeminPayState extends State<AdjeminPay>
 
             if (transactionStatus.status == StatusCode.PENDING) {
               print("Payment Pending...");
-              print(transactionStatus);
-              print(transactionStatus.data);
+
 
               // Launch confirmation wait
               setState(() {
                 _paymentState = AdpPaymentState.waiting;
-                _paymentResult = transactionStatus.toJson();
+                _paymentResult = {
+                  'status': StatusCode.PENDING,
+                  'message': "Le paiement en attente !"
+                };
               });
               _activateReload();
               _activateAbort(10);
@@ -378,11 +400,13 @@ class _AdjeminPayState extends State<AdjeminPay>
           // TODO Other payment method type
         }
 
-      }
+      }*/
 
 
 
     }catch(error){
+
+      print('_makePayment() ====>>> Error $error');
 
       if(error is AdjeminPayException){
 
@@ -482,12 +506,18 @@ class _AdjeminPayState extends State<AdjeminPay>
         curve: Curves.easeIn,
       ),
     );
+
+    Timer.run((){
+
+      print("initState() >>> loadPage()");
+      loadPage();
+    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    loadPage();
+    //loadPage();
   }
 
   @override
@@ -586,9 +616,13 @@ class _AdjeminPayState extends State<AdjeminPay>
         _iz();
 
         await Future.delayed(Duration(milliseconds: 100))
-            .then((value) => setState(() {
-          _isPageLoading = false;
-        }));
+            .then((value){
+              if(mounted){
+                setState(() {
+                  _isPageLoading = false;
+                });
+              }
+        });
 
       }else{
         _paymentResult = {
@@ -636,11 +670,13 @@ class _AdjeminPayState extends State<AdjeminPay>
 
   void exitWithError(result) {
     print(">>>>> ADP INVALID_PARAMS");
-    setState(() {
-      _isPageLoading = false;
-      _paymentState = AdpPaymentState.error;
-      _paymentResult = result;
-    });
+    if(mounted){
+      setState(() {
+        _isPageLoading = false;
+        _paymentState = AdpPaymentState.error;
+        _paymentResult = result;
+      });
+    }
   }
 
   // payment function
@@ -891,9 +927,11 @@ class _AdjeminPayState extends State<AdjeminPay>
                         focusNode: _clientNameFocusNode,
                         keyboardType: TextInputType.name,
                         onChanged: (_) {
-                          setState(() {
-                            _nameErrorText = '';
-                          });
+                         if(mounted){
+                           setState(() {
+                             _nameErrorText = '';
+                           });
+                         }
                         },
                         onSubmitted: _validateName,
                         style: _nameErrorText.isEmpty
@@ -985,7 +1023,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                                 decoration: InputDecoration(
                                   contentPadding: EdgeInsets.all(0),
                                   hintText:
-                                  _phoneErrorText.isEmpty ? "00000000" : "",
+                                  _phoneErrorText.isEmpty ? "0000000000" : "",
                                   hintStyle: AdpTextStyles.primary_bold,
                                   border: InputBorder.none,
                                   counter: Container(),
@@ -993,9 +1031,11 @@ class _AdjeminPayState extends State<AdjeminPay>
                                 maxLength: 10,
                                 // maxLengthEnforced: true,
                                 onChanged: (_) {
-                                  setState(() {
-                                    _phoneErrorText = '';
-                                  });
+                                  if(mounted){
+                                    setState(() {
+                                      _phoneErrorText = '';
+                                    });
+                                  }
                                 },
                                 onSubmitted: _validatePhone,
                                 onEditingComplete: () {
@@ -1104,9 +1144,11 @@ class _AdjeminPayState extends State<AdjeminPay>
                                     border: InputBorder.none,
                                     counter: Container()),
                                 onChanged: (_) {
-                                  setState(() {
-                                    _otpErrorText = '';
-                                  });
+                                 if(mounted){
+                                   setState(() {
+                                     _otpErrorText = '';
+                                   });
+                                 }
                                 },
                                 onSubmitted: _validateOrangeOtp,
                                 onEditingComplete: () {
@@ -1199,9 +1241,11 @@ class _AdjeminPayState extends State<AdjeminPay>
         onTap: () {
           // ** Select current method
           if (paymentMethod != AdpPaymentMethod.bank) {
-            setState(() {
-              _selectedMethod = paymentMethod;
-            });
+            if(mounted){
+              setState(() {
+                _selectedMethod = paymentMethod;
+              });
+            }
           }
         },
         child: Container(
@@ -1251,18 +1295,20 @@ class _AdjeminPayState extends State<AdjeminPay>
         onTap: () {
           // ** Select current operator
           if (paymentOperator != AdpPaymentOperator.moov) {
-            setState(() {
-              _selectedOperator = paymentOperator;
-              _phoneErrorText = '';
+            if(mounted){
+              setState(() {
+                _selectedOperator = paymentOperator;
+                _phoneErrorText = '';
 
-              if (paymentOperator == AdpPaymentOperator.orange) {
-                _animationController.forward();
-              } else {
-                _otpErrorText = '';
-                // _clientOrangeOtpController.text = '';
-                _animationController.reverse();
-              }
-            });
+                if (paymentOperator == AdpPaymentOperator.orange) {
+                  _animationController.forward();
+                } else {
+                  _otpErrorText = '';
+                  // _clientOrangeOtpController.text = '';
+                  _animationController.reverse();
+                }
+              });
+            }
           }
         },
         child: Container(
@@ -1644,34 +1690,48 @@ class _AdjeminPayState extends State<AdjeminPay>
     print(">> activating reload");
     Future.delayed(Duration(seconds: seconds ?? 30)).then((_) {
       print("<< reload activated");
-      setState(() {
-        _paymentReloadIsEnabled = true;
-        _reloadInfoText = "En attente de la mise à jour du status..";
-      });
+      if(mounted){
+        setState(() {
+          _paymentReloadIsEnabled = true;
+          _reloadInfoText = "En attente de la mise à jour du status..";
+        });
+      }
     });
     //
     Future.delayed(Duration(seconds: 50)).then((_) {
-      setState(() => _reloadInfoText =
-      "En attente de la mise à jour du status de paiement par MTN - Côte d'Ivoire..");
+      if(mounted){
+        setState(() => _reloadInfoText =
+        "En attente de la mise à jour du status de paiement par MTN - Côte d'Ivoire..");
+      }
     });
     Future.delayed(Duration(seconds: 50+30)).then((_) {
-      setState(() => _reloadInfoText = "Le retour de MTN prend un temps anormalement long, cliquez sur ce bouton pour actualiser le status");
+     if(mounted){
+       setState(() => _reloadInfoText = "Le retour de MTN prend un temps anormalement long, cliquez sur ce bouton pour actualiser le status");
+     }
     });
     Future.delayed(Duration(seconds: 50+30+60)).then((_) {
-      setState(() => _reloadInfoText =
-      "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
+     if(mounted){
+       setState(() => _reloadInfoText =
+       "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
+     }
     });
     Future.delayed(Duration(seconds: 50+30+60+30)).then((_) {
-      setState(() => _reloadInfoText =
-      "Si vous avez été débité, nous vous prions de patienter encore un peu");
+     if(mounted){
+       setState(() => _reloadInfoText =
+       "Si vous avez été débité, nous vous prions de patienter encore un peu");
+     }
     });
     Future.delayed(Duration(seconds: 50+30+60+30+5)).then((_) {
-      setState(() => _reloadInfoText =
-      "Veuillez cliquer sur le bouton ci-dessous pour actualiser manuellement..");
+      if(mounted){
+        setState(() => _reloadInfoText =
+        "Veuillez cliquer sur le bouton ci-dessous pour actualiser manuellement..");
+      }
     });
     Future.delayed(Duration(seconds: 50+30+60+30+5+15)).then((_) {
-      setState(() => _reloadInfoText =
-      "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
+      if(mounted){
+        setState(() => _reloadInfoText =
+        "L'actualisation du status de paiement par MTN met anormalement de temps, cliquez sur ce bouton pour actualiser");
+      }
     });
   }
 
@@ -1679,7 +1739,9 @@ class _AdjeminPayState extends State<AdjeminPay>
     print(">> activating abort");
     Future.delayed(Duration(seconds: seconds ?? 10)).then((_) {
       print("<< abort activated");
-      setState(() => _paymentAbortIsEnabled = true);
+      if(mounted){
+        setState(() => _paymentAbortIsEnabled = true);
+      }
     });
   }
 
@@ -1693,9 +1755,11 @@ class _AdjeminPayState extends State<AdjeminPay>
 
     FocusScope.of(context).requestFocus(_clientNameFocusNode);
     if (clientName.isEmpty) {
-      setState(() {
-        _nameErrorText = "Veuillez entrer votre nom et prénoms";
-      });
+     if(mounted){
+       setState(() {
+         _nameErrorText = "Veuillez entrer votre nom et prénoms";
+       });
+     }
       return false;
     }
 
@@ -1703,23 +1767,27 @@ class _AdjeminPayState extends State<AdjeminPay>
 
     // if (illegalCharacters.hasMatch(clientName)) {
     if (clientName.contains(illegalCharacters)) {
-      setState(() {
-        _nameErrorText = "Nom et prénoms invalide";
-      });
+      if(mounted){
+        setState(() {
+          _nameErrorText = "Nom et prénoms invalide";
+        });
+      }
       return false;
     }
 
     if (clientName.length < 3) {
-      setState(() {
-        _nameErrorText = "Nom et prénoms trop court";
-      });
+      if(mounted){
+        setState(() {
+          _nameErrorText = "Nom et prénoms trop court";
+        });
+      }
       return false;
     }
 
     _clientNameController.text = clientName;
 
     FocusScope.of(context).requestFocus(_clientPhoneFocusNode);
-    // _validateOrangeOtp(_clientOrangeOtpController.text);
+
     return true;
   }
 
@@ -1730,10 +1798,12 @@ class _AdjeminPayState extends State<AdjeminPay>
 
     FocusScope.of(context).requestFocus(_clientPhoneFocusNode);
     if (clientPhone.isEmpty) {
-      setState(() {
-        _phoneErrorText =
-        "Veuillez entrer votre numéro ${_selecteOperatorName(_selectedOperator)} money";
-      });
+      if(mounted){
+        setState(() {
+          _phoneErrorText =
+          "Veuillez entrer votre numéro ${_selecteOperatorName(_selectedOperator)} money";
+        });
+      }
       return false;
     }
 
@@ -1742,13 +1812,13 @@ class _AdjeminPayState extends State<AdjeminPay>
     // if (illegalCharacters.hasMatch(clientPhone)) {
     if (clientPhone.contains(illegalCharacters)) {
       _phoneErrorText = "Numéro de téléphone invalide";
-      setState(() {});
+      if(mounted)setState(() {});
       return false;
     }
 
     if (clientPhone.length != 10) {
       _phoneErrorText = "Le téléphone doit être de 10 chiffres";
-      setState(() {});
+      if(mounted)setState(() {});
       return false;
     }
 
@@ -1760,7 +1830,7 @@ class _AdjeminPayState extends State<AdjeminPay>
         var legalPrefixes = AdpOperator.moovPrefixes;
         if (!legalPrefixes.contains(clientPrefix)) {
           _phoneErrorText = "Veuillez entrer un numéro Moov valide";
-          setState(() {});
+          if(mounted)setState(() {});
           return false;
         }
         break;
@@ -1768,7 +1838,7 @@ class _AdjeminPayState extends State<AdjeminPay>
         var legalPrefixes = AdpOperator.mtnPrefixes;
         if (!legalPrefixes.contains(clientPrefix)) {
           _phoneErrorText = "Veuillez entrer un numéro MTN valide";
-          setState(() {});
+          if(mounted)setState(() {});
           return false;
         }
         break;
@@ -1776,7 +1846,7 @@ class _AdjeminPayState extends State<AdjeminPay>
         var legalPrefixes = AdpOperator.orangePrefixes;
         if (!legalPrefixes.contains(clientPrefix)) {
           _phoneErrorText = "Veuillez entrer un numéro Orange valide";
-          setState(() {});
+          if(mounted)setState(() {});
           print(">>>> validation");
           return false;
         }
@@ -1784,7 +1854,7 @@ class _AdjeminPayState extends State<AdjeminPay>
       default:
         _phoneErrorText = "Téléphone introuvable";
         print(">>>> validation");
-        setState(() {});
+        if(mounted)setState(() {});
         return false;
         break;
     }
@@ -1804,24 +1874,31 @@ class _AdjeminPayState extends State<AdjeminPay>
   bool _validateOrangeOtp(String orangeOtp) {
     FocusScope.of(context).requestFocus(_clientOrangeOtpFocusNode);
     if (orangeOtp.isEmpty) {
-      setState(() {
-        _otpErrorText = "Tapez #144*82# pour obtenir le code Otp";
-      });
+      if(mounted){
+        setState(() {
+          _otpErrorText = "Tapez #144*82# pour obtenir le code Otp";
+        });
+      }
+
       return false;
     }
     if (orangeOtp.length != 4) {
-      setState(() {
-        _otpErrorText = "Otp doit être de 4 chiffres";
-      });
+      if(mounted){
+        setState(() {
+          _otpErrorText = "Otp doit être de 4 chiffres";
+        });
+      }
       return false;
     }
     RegExp illegalCharacters = RegExp(r"\D");
 
     if (illegalCharacters.hasMatch(orangeOtp)) {
       print(">>>>>>>>>>>");
-      setState(() {
-        _otpErrorText = "Otp doit être des chiffres";
-      });
+      if(mounted){
+        setState(() {
+          _otpErrorText = "Otp doit être des chiffres";
+        });
+      }
       return false;
     }
 
@@ -1851,28 +1928,37 @@ class _AdjeminPayState extends State<AdjeminPay>
         int delay,
       }) {
     print(">>_notify $message");
-    setState(() {
-      _notificationText = "";
-    });
-    Future.delayed(Duration(milliseconds: delay ?? 300)).then((_) {
+    if(mounted){
       setState(() {
-        _notificationText = message;
-        _notificationColor = type ?? "info";
+        _notificationText = "";
       });
+    }
+    Future.delayed(Duration(milliseconds: delay ?? 300)).then((_) {
+      if(mounted){
+        setState(() {
+          _notificationText = message;
+          _notificationColor = type ?? "info";
+        });
+      }
 
       Future.delayed(Duration(seconds: duration ?? 5))
-          .then((value) => setState(() => _notificationText = ""));
+          .then((value){
+            if(mounted){
+              setState(() => _notificationText = "");
+            }
+      });
     });
   }
 
-  // _dismissNotification() => setState(() => _notificationText = "");
 
   // _selectedOperator == AdpPaymentOperator.orange ? 90 : 0,
   // Show Abort dialog view
   _showAbortDialog() {
-    setState(() {
-      _isShowingDialog = true;
-    });
+    if(mounted){
+      setState(() {
+        _isShowingDialog = true;
+      });
+    }
     _animationController.forward();
   }
 
@@ -1891,7 +1977,6 @@ class _AdjeminPayState extends State<AdjeminPay>
         print("response <<< ");
         print(finalMtnResponse);
         final finalResponseData = finalMtnResponse.data;
-        // print(">> $finalResponseData");
 
         _notifyStatus(finalResponseData.status);
         if (finalResponseData.status == Transaction.SUCCESSFUL) {
@@ -1901,7 +1986,9 @@ class _AdjeminPayState extends State<AdjeminPay>
             'message': "Paiement réussi !"
           };
           print("===> going notify success");
-          setState(() {});
+          if(mounted){
+            setState(() {});
+          }
           print("<=== finished notify success");
         }
         if (finalResponseData.status == Transaction.CANCELLED) {
@@ -1914,7 +2001,9 @@ class _AdjeminPayState extends State<AdjeminPay>
             'message': "Le paiement a été refusé"
           };
           print("===> going notify refused");
-          setState(() {});
+          if(mounted){
+            setState(() {});
+          }
           print("<=== finished notify refused");
         }
 
@@ -1925,7 +2014,9 @@ class _AdjeminPayState extends State<AdjeminPay>
             'message': "Le paiement a échoué !"
           };
           print("===> going notify failed");
-          setState(() {});
+          if(mounted){
+            setState(() {});
+          }
 
         }
         // **** Sending notification to ?notifyUrl
@@ -1935,15 +2026,17 @@ class _AdjeminPayState extends State<AdjeminPay>
         // throw payUrlResponse;
         print('============ Mtn Manual Follow Transaction Error ==========');
         print(finalMtnResponse.toJson());
-        setState(() {
-          // _paymentState = AdpPaymentState.errorHttp;
-          _paymentResult = {
-            'code': "00",
-            'status': "ERROR_STATUS",
-            'message':
-            "En attente de paiement du client. Mais Impossible de suivre le status du paiement"
-          };
-        });
+        if(mounted){
+          setState(() {
+            // _paymentState = AdpPaymentState.errorHttp;
+            _paymentResult = {
+              'code': "00",
+              'status': "ERROR_STATUS",
+              'message':
+              "En attente de paiement du client. Mais Impossible de suivre le status du paiement"
+            };
+          });
+        }
         return;
         // _notifyStatus("Veuillez réessayer", type: "error");
         // // _notifyStatus("Erreur status", type: "error");
@@ -1959,9 +2052,11 @@ class _AdjeminPayState extends State<AdjeminPay>
   _closeAbortDialog() {
     _animationController.reverse();
     Future.delayed(Duration(milliseconds: 100)).then((_) {
-      setState(() {
-        _isShowingDialog = false;
-      });
+     if(mounted){
+       setState(() {
+         _isShowingDialog = false;
+       });
+     }
     });
   }
 
@@ -1974,9 +2069,11 @@ class _AdjeminPayState extends State<AdjeminPay>
       'status': "CANCELLED",
       'message': "Paiement annulé"
     };
-    setState(() {
-      _paymentState = AdpPaymentState.cancelled;
-    });
+    if(mounted){
+      setState(() {
+        _paymentState = AdpPaymentState.cancelled;
+      });
+    }
     _closeAbortDialog();
     // _exit();
   }

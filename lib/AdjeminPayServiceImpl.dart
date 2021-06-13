@@ -141,7 +141,7 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
           "payment_method_reference":paymentMethodReference,
           "amount":"$amount",
           "currency_code":currencyCode,
-          "otp":"$otp"??""
+          "otp":otp ==null?"":"$otp"
         },
         headers: {
           'Authorization' : 'Bearer ${accessTokenResult.accessToken}',
@@ -207,8 +207,8 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
         }
     );
 
-    print('URL $url');
-    print('BODY ${response.body}');
+    //print('URL $url');
+    //print('BODY ${response.body}');
 
     if(response.statusCode == 200){
       final Map json = jsonDecode(response.body);
