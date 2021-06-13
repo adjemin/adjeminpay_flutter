@@ -135,7 +135,7 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
         body: <String, String>{
           "merchant_transaction_id": merchantTransactionId,
           "designation": designation,
-          "buyer_name":buyerName??"",
+          "buyer_name":buyerName ==null?"":buyerName,
           "buyer_reference":buyerReference,
           "notification_url":notificationUrl,
           "payment_method_reference":paymentMethodReference,
@@ -155,7 +155,6 @@ class AdjeminPayServiceImpl implements AdjeminPayService{
     print("STATUS CODE: ${response.statusCode}");
     print('============ Response Initiate Payment status ==========');
     print("BODY: ${response.body}");
-    print(response.body);
 
     if(response.statusCode == 200){
       final Map json = jsonDecode(response.body);
