@@ -85,7 +85,7 @@ class _AdjeminPayState extends State<AdjeminPay>
   // String _transactionId;
 
   TextEditingController _clientNameController = TextEditingController();
-  TextEditingController _clientPhoneController = TextEditingController(text:"0556888385");
+  TextEditingController _clientPhoneController = TextEditingController();
   TextEditingController _clientOrangeOtpController = TextEditingController();
 
   // final _adpForm = GlobalKey<FormState>();
@@ -175,19 +175,6 @@ class _AdjeminPayState extends State<AdjeminPay>
 
 
     try{
-
-      /*final TransactionStatus transactionStatus = await new AdjeminPayServiceImpl().doTransactionOperation(
-          clientId: widget.clientId,
-          clientSecret: widget.clientSecret,
-          merchantTransactionId: widget.merchantTransactionId,
-          designation: widget.designation,
-          amount: widget.amount,
-          currencyCode: widget.currencyCode,
-          buyerName: _clientNameController.text,
-          buyerReference: '225'+_clientPhoneController.text,
-          otp: _selectedMethod == AdpPaymentMethod.mobile && PaymentMethod.isORANGE(paymentOperatorText(_selectedOperator))?(_clientOrangeOtpController.text.trim().isNotEmpty?int.parse(_clientOrangeOtpController.text):-1):-1,
-          paymentMethodReference: paymentOperatorText(_selectedOperator)
-      );*/
 
       final TransactionStatus transactionStatus = await new AdjeminPayServiceImpl().doTransactionOperation(
             clientId: widget.clientId,
