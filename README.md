@@ -103,14 +103,13 @@ The following fiels are required:
 * `merchantTransactionId` : Unique id for everyone of your payments
 * `designation` : What your user will see as what they're paying for
 * `amount`  : Obviously, right ?
-* `currencyCode`: XOF
-* `notifyUrl` : A url you set in your web backend.
+* `currencyCode`: Currency for the payment
+  NB: _As of version ^0.1 only `XOF` is supported, so check back soon for more_
+* `notificationUrl` : A url you set in your web backend.
   A post request with the payment result (a json containing {transactionId, status, message}) will be sent to that url when the payment is completed (successful, failed, cancelled, expired) to allow you to update the order/transaction status in your database directly from your backend.
   This field is optional, since you could do such an update as a callback from your flutter app.
-  NB: _If you do want to use the notifyUrl, please check out our [php sdk](https://github.com/adjemin/adjeminpay-php-sdk) for how to catch the notification._
-  
-* `currency` : Currency for the payment
-  NB: _As of version ^0.1 only `XOF` is supported, so check back soon for more_
+  NB: _If you do want to use the notificationUrl, please check out our [php sdk](https://github.com/adjemin/adjeminpay-php-sdk) for how to catch the notification._
+ 
 `optional fields`:
 These fields are optional:
 * `buyerName` : The name of your user
