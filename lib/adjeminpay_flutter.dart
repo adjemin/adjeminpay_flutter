@@ -176,8 +176,9 @@ class _AdjeminPayState extends State<AdjeminPay>
 
     try{
 
+
       final TransactionStatus transactionStatus = await new AdjeminPayServiceImpl().doTransactionOperation(
-          clientId: widget.clientId,
+            clientId: widget.clientId,
           clientSecret: widget.clientSecret,
           merchantTransactionId: widget.merchantTransactionId,
           designation: widget.designation,
@@ -213,7 +214,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                 _paymentState = AdpPaymentState.successful;
                 _paymentResult = {
                   'code': transactionStatus.code ?? StatusCode.codes[StatusCode.SUCCESS],
-                  'status': transactionStatus.status ?? StatusCode.SUCCESS,
+                  'status': transactionStatus.data.status ?? Transaction.SUCCESSFUL,
                   'message': "Paiement réussi !"
                 };
               });
@@ -295,7 +296,7 @@ class _AdjeminPayState extends State<AdjeminPay>
                       _paymentState = AdpPaymentState.successful;
                       _paymentResult = {
                         'code': finalMtnResponse.code ?? StatusCode.codes[StatusCode.SUCCESS],
-                        'status': finalMtnResponse.status ?? StatusCode.SUCCESS,
+                        'status': finalMtnResponse.data.status ?? Transaction.SUCCESSFUL,
                         'message': "Paiement réussi !"
                       };
                       print("===> going notify success");

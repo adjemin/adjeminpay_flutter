@@ -107,7 +107,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
       }
       Scaffold.of(context).showSnackBar(SnackBar(content: Text("Payment Status is ${paymentResult['status']}")));
       // Callback on payment successfully
-      if (paymentResult['status'] == "SUCCESS") {
+      if (paymentResult['status'] == "SUCCESSFUL") {
         print("<<< AdjeminPay success");
         print(paymentResult);
         // redirect to or show another screen
