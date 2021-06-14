@@ -33,7 +33,7 @@ Add the adjeminpay_flutter package as a dependancy in your `pubspec.yaml` file.
     dependencies:
     flutter:
         sdk: flutter
-    adjeminpay_flutter: ^1.1.102
+    adjeminpay_flutter: ^1.1.103
 ```
 
 Then import it to your cart screen
