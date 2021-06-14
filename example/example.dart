@@ -17,8 +17,8 @@ class _ExampleScreenState extends State<ExampleScreen> {
   // To either display a loading spinner or the "Order Now" button
   var _isLoading = false;
 
-  static final String clientId = "41";
-  static final String clientSecret = "Y4R91969G3GYKV1JKvKQaaliK95yluEWKbHKPrfj";
+  static final String clientId = "CLIENT_ID";
+  static final String clientSecret = "CLIENT_SECRET";
 
   static String generateUUID() {
     var rnd = new m.Random.secure();
