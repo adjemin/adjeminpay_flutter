@@ -17,18 +17,12 @@ Sign up and create a merchant application for free at [AdjeminPay][] to get an a
 Then store them in a config/constants/env file where you keep all your other constant data.
 
 ````dart
-const Map adpConfig = {
-      // Your apiKey
-      'apiKey': "eyJpdiI6IkpNQ05tWmtGc0FVbWc1VFhFM",
-      // Your applicationId
-      'applicationId': "99f99e",
-      // The notifyUrl is a url for your web backend if you use any
-      // A post request with the {transactionId, status, message}
-      // will be sent to this url when the payment is terminated (successful, failed, cancelled, or if an error occured)
-      // This not required as the package allows you to excute a callback
-      // on paymentTerminated
-      'notifyUrl': "",
-    };
+class Constants{
+
+  static final String ADJEMINPAY_CLIENT_ID = "CLIENT_ID";
+  static final String ADJEMINPAY_CLIENT_SECRET = "CLIENT_SECRET";
+  static final String ADJEMINPAY_NOTIFICATION_URL = "https://your.backend.api/notifyUrl";
+}
 ````
 
 ### Step 2. Import the package
@@ -39,7 +33,7 @@ Add the adjeminpay_flutter package as a dependancy in your `pubspec.yaml` file.
     dependencies:
     flutter:
         sdk: flutter
-    adjeminpay_flutter:
+    adjeminpay_flutter: ^1.1.102
 ```
 
 Then import it to your cart screen
@@ -71,9 +65,9 @@ This example uses a basic Map for storing data about an order but it could be an
 ```dart
     Map<String, dynamic> myOrder = {
       // ! required transactionId or orderId
-      'transactionId': "UniqueTransactionId" + DateTime.now().toString(),
+      'transaction_id': "UniqueTransactionId",
       // ! required total amount
-      'totalAmount': 1000,
+      'total_amount': 1000,
       // optional your orderItems data
       'items': [
         {
@@ -91,9 +85,9 @@ This example uses a basic Map for storing data about an order but it could be an
           'title': 'Product 9 title',
         },
       ],
-      'currency': "XOF",
+      'currency_code': "XOF",
       'designation': "Order Title",
-      'payerName': "ClientName",
+      'client_name': "ClientName",
     };
 ```
 
@@ -104,15 +98,12 @@ Copy-paste this function that takes in the order data and extracts the fields ne
 `required fields`:
 The following fiels are required:
 
-* `apiKey`      : You can get it in `Step 1.`
-* `applicationId`    : You can get it in `Step 1.`
-* `transactionId` : Unique id for everyone of your payments, max 191 characters
+* `clientId`      : You can get it in `Step 1.`
+* `clientSecret`    : You can get it in `Step 1.`
+* `merchantTransactionId` : Unique id for everyone of your payments
 * `designation` : What your user will see as what they're paying for
 * `amount`  : Obviously, right ?
-
-`optional fields`:
-These fields are optional:
-
+* `currencyCode`: XOF
 * `notifyUrl` : A url you set in your web backend.
   A post request with the payment result (a json containing {transactionId, status, message}) will be sent to that url when the payment is completed (successful, failed, cancelled, expired) to allow you to update the order/transaction status in your database directly from your backend.
   This field is optional, since you could do such an update as a callback from your flutter app.
@@ -120,7 +111,9 @@ These fields are optional:
   
 * `currency` : Currency for the payment
   NB: _As of version ^0.1 only `XOF` is supported, so check back soon for more_
-* `payerName` : The name of your user
+`optional fields`:
+These fields are optional:
+* `buyerName` : The name of your user
   NB: _It is recommended that you provide it in your payment data as it saves your user the hassle of having to type it in the payment gate._
 
 Now let's implement the payment handler function
@@ -139,33 +132,32 @@ void payWithAdjeminPay(dynamic orderData) async {
             builder: (context) =>
                 // The AdjeminPay class
                 AdjeminPay(
-              // ! required apiKey
-              apiKey: adpConfig['apiKey'],
-              // ! required applicationId required
-              applicationId: adpConfig['applicationId'],
-              // ! required transactionId required
-              // for you to follow the transaction
-              //    or retrieve it later
-              //    should be a string < 191 and unique for your application
-              transactionId: "${orderData['transactionId']}",
-              // notifyUrl for your web backend
-              notifyUrl: "https://your.backend.api/notifyUrl",
-              // amount: int.parse("${orderData['totalAmount']}"),
-              // ! required amount
-              //    amount the user is going to pay
-              //    should be an int
-              amount: int.parse("${orderData['totalAmount']}"),
-              // currency code
-              // currently supported currency is XOF
-              currency: "XOF",
-              // ! required designation
-              //   the name the user will see as what they're paying for
-
-              designation: orderData['designation'],
-              // designation: widget.element.title,
-              // the name of your user
-              payerName: orderData['clientName'],
-            ),
+                   // ! required clientId
+                  clientId: clientId,
+                  // ! required clientScret
+                  clientSecret: clientSecret,
+                  // ! required transactionId required
+                  // for you to follow the transaction
+                  //    or retrieve it later
+                  //    should be a string < 191 and unique for your application
+                  merchantTransactionId: "${orderData['transaction_id']}",
+                      // ! required designation
+                      //   the name the user will see as what they're paying for
+                  designation: orderData['designation'],
+                  // notifyUrl for your web backend
+                  notificationUrl: "https://api.exemple.com/epayment/callback",
+                  // amount: int.parse("${orderData['totalAmount']}"),
+                  // ! required amount
+                  //    amount the user is going to pay
+                  //    should be an int
+                  amount: int.parse("${orderData['total_amount']}"),
+                  // currency code
+                  // currently supported currency is XOF
+                  currencyCode: orderData['currency_code'],
+                  // designation: widget.element.title,
+                  // the name of your user
+                  buyerName: orderData['client_name'], //optional  
+                ),
           ));
 
       print(">>> ADJEMINPAY PAYMENT RESULTS <<<");
@@ -179,7 +171,7 @@ void payWithAdjeminPay(dynamic orderData) async {
       }
       Scaffold.of(context).showSnackBar(SnackBar(content: Text("Payment Status is ${paymentResult['status']}")));
       // Callback on payment successfully
-      if (paymentResult['status'] == "SUCCESSFUL") {
+       if (paymentResult['status'] == "SUCCESS") {
         print("<<< AdjeminPay success");
         print(paymentResult);
         // redirect to or show another screen
@@ -213,109 +205,27 @@ void payWithAdjeminPay(dynamic orderData) async {
         return;
       }
       // Callback on initialisation error
-      if (paymentResult['status'] == "ERROR_CONFIG") {
+      if (paymentResult['status'] == "INVALID_PARAMS") {
         print("<<< AdjeminPay Init error");
         // You didn't specify a required field
-        // or your apiKey or applicationId are not valid
         print(paymentResult);
         return;
       }
-      // Callback in case
-      if (paymentResult['status'] == "ERROR") {
-        print("<<< AdjeminPay Error");
-        // You specified :
-        // - a transactionId that has already been used
-        // -
-        print(paymentResult);
-        return;
-      }
-      // Callback when AdjeminPay requests aren't completed
-      if (paymentResult['status'] == "ERROR_HTTP") {
-          print("<<< AdjeminPay oups");
-          print("Could not reach AdjeminPay Servers");
-        return;
-      }
-    }
-```
 
-Here's the same function without the comments :
-
-```dart
-void payWithAdjeminPay(dynamic orderData) async {
-      Map<String, dynamic> paymentResult = await Navigator.push(
-          context,
-          new MaterialPageRoute(
-            builder: (context) =>
-                AdjeminPay(
-              apiKey: adpConfig['apiKey'],
-              applicationId: adpConfig['applicationId'],
-              transactionId: "${orderData['transactionId']}",
-              notifyUrl: "https://your.backend.api/notifyUrl",
-              amount: int.parse("${orderData['totalAmount']}"),
-              // currency: "XOF",
-              design    ation: orderData['designation'],
-              payerName: orderData['clientName'],
-            ),
-          ));
-
-      print(">>> ADJEMINPAY PAYMENT RESULTS <<<");
-      print(paymentResult);
-      if (paymentResult == null) {
-        print("<<< Payment Gate Unexpectedly closed");
-        return;
-      }
-      Scaffold.of(context).showSnackBar(SnackBar(content: Text("Payment Status is ${paymentResult['status']}")));
-      // Callback on payment successfully
-      if (paymentResult['status'] == "SUCCESSFUL") {
-        print("<<< AdjeminPay success");
-        print(paymentResult);
-        // redirect to or show another screen
-        return;
-      }
-      // Callback on payment failed
-      if (paymentResult['status'] == "FAILED") {
-        print("<<< AdjeminPay failed");
-        print(paymentResult);
-        print("Reason is : " + paymentResult['message']);
-        // redirect to or show another screen
-        return;
-      }
-      // Callback on payment cancelled
-      if (paymentResult['status'] == "CANCELLED") {
-        print("<<< AdjeminPay cancelled");
-        print(paymentResult);
-        print("Reason is : " + paymentResult['message']);
-        // redirect to or show another screen
-        return;
-      }
-      // Callback on payment cancelled
-      if (paymentResult['status'] == "EXPIRED") {
-        print("<<< AdjeminPay expired");
-        print(paymentResult);
-        print("Reason is : " + paymentResult['message']);
-        // redirect to or show another screen
-        return;
-      }
-      // Callback on initialisation error
-      if (paymentResult['status'] == "ERROR_CONFIG") {
+      if (paymentResult['status'] == "INVALID_CREDENTIALS") {
         print("<<< AdjeminPay Init error");
-        print(paymentResult);
-        return;
-      }
-      // Callback in case
-      if (paymentResult['status'] == "ERROR") {
-        print("<<< AdjeminPay Error");
+        // You didn't specify a required field
+        // or your clientId or clientSecret are not valid
         print(paymentResult);
         return;
       }
       // Callback when AdjeminPay requests aren't completed
       if (paymentResult['status'] == "ERROR_HTTP") {
-          print("<<< AdjeminPay oups");
-          print("Could not reach AdjeminPay Servers");
         return;
       }
     }
 ```
+
 
 ### Step 6. Pass the function above to your "Order Now" button
 

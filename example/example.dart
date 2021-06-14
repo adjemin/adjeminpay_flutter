@@ -93,7 +93,6 @@ class _ExampleScreenState extends State<ExampleScreen> {
               // designation: widget.element.title,
               // the name of your user
               buyerName: orderData['client_name'], //optional
-              buyerReference: orderData['client_phone'], //optional
             ),
           ));
 
@@ -108,7 +107,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
       }
       Scaffold.of(context).showSnackBar(SnackBar(content: Text("Payment Status is ${paymentResult['status']}")));
       // Callback on payment successfully
-      if (paymentResult['status'] == "SUCCESSFUL") {
+      if (paymentResult['status'] == "SUCCESS") {
         print("<<< AdjeminPay success");
         print(paymentResult);
         // redirect to or show another screen

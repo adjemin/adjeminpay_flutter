@@ -1,5 +1,8 @@
 # ChangeLog AdjeminPay Flutter
 
+## [1.1.102] - 14/06/2021
+* Bug fixed
+
 ## [0.1.7] - 12/06/2021
 * AdjeminPay APis V2  integrated
 * Bug fixed

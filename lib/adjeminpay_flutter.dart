@@ -177,7 +177,7 @@ class _AdjeminPayState extends State<AdjeminPay>
     try{
 
       final TransactionStatus transactionStatus = await new AdjeminPayServiceImpl().doTransactionOperation(
-            clientId: widget.clientId,
+          clientId: widget.clientId,
           clientSecret: widget.clientSecret,
           merchantTransactionId: widget.merchantTransactionId,
           designation: widget.designation,
