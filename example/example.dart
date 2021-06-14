@@ -75,7 +75,7 @@ class _ExampleScreenState extends State<ExampleScreen> {
               // ! required transactionId required
               // for you to follow the transaction
               //    or retrieve it later
-              //    should be a string < 191 and unique for your application
+              //    should be a string and unique for your application
               merchantTransactionId: "${orderData['transaction_id']}",
                   // ! required designation
                   //   the name the user will see as what they're paying for
