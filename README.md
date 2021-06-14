@@ -133,9 +133,9 @@ void payWithAdjeminPay(dynamic orderData) async {
                 // The AdjeminPay class
                 AdjeminPay(
                    // ! required clientId
-                  clientId: clientId,
+                  clientId: Constants.ADJEMINPAY_CLIENT_ID,
                   // ! required clientScret
-                  clientSecret: clientSecret,
+                  clientSecret: Constants.ADJEMINPAY_CLIENT_SECRET,
                   // ! required transactionId required
                   // for you to follow the transaction
                   //    or retrieve it later
@@ -145,7 +145,7 @@ void payWithAdjeminPay(dynamic orderData) async {
                       //   the name the user will see as what they're paying for
                   designation: orderData['designation'],
                   // notifyUrl for your web backend
-                  notificationUrl: "https://api.exemple.com/epayment/callback",
+                  notificationUrl:Constants.ADJEMINPAY_NOTIFICATION_URL,
                   // amount: int.parse("${orderData['totalAmount']}"),
                   // ! required amount
                   //    amount the user is going to pay
